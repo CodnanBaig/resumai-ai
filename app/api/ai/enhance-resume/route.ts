@@ -1,36 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-interface ResumeData {
-  personalInfo: {
-    fullName: string
-    email: string
-    phone: string
-    location: string
-    summary: string
-  }
-  skills: string[]
-  workExperience: Array<{
-    company: string
-    position: string
-    startDate: string
-    endDate: string
-    description: string
-    current: boolean
-  }>
-  education: Array<{
-    school: string
-    degree: string
-    field: string
-    graduationDate: string
-  }>
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const { resumeData, jobDescription, enhancementType } = await request.json()
+    const { resumeData, jobDescription, enhancementType, resumeId } = await request.json()
 
     // TODO: Add OpenRouter API key to environment variables
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
+    const model = process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free"
 
     if (!openRouterApiKey) {
       return NextResponse.json(
@@ -93,7 +69,7 @@ export async function POST(request: NextRequest) {
         "X-Title": "ResumeAI Builder",
       },
       body: JSON.stringify({
-        model: "openai/gpt-3.5-turbo",
+        model,
         messages: [
           {
             role: "system",
@@ -124,12 +100,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Try to parse JSON response for improve/tailor, return raw for keywords
-    let result
+    let result: Record<string, unknown>
     try {
       result = JSON.parse(enhancedContent)
     } catch {
       // If not valid JSON, return as text (for keywords suggestions)
       result = { content: enhancedContent }
+    }
+
+    // Optionally persist enhancement into an existing resume
+    if (resumeId && (enhancementType === "improve" || enhancementType === "tailor") && result) {
+      const token = request.cookies.get("session")?.value
+      if (token) {
+        try {
+          const { verifySessionToken } = await import("@/lib/auth")
+          const session = await verifySessionToken(token)
+          const { prisma } = await import("@/lib/db")
+          await prisma.resume.update({
+            where: { id: resumeId, userId: session.userId },
+            data: {
+              personalInfo: result.personalInfo ?? undefined,
+              skills: result.skills ?? undefined,
+              workExperience: result.workExperience ?? undefined,
+              education: result.education ?? undefined,
+              content: result.content ?? undefined,
+            },
+          })
+        } catch (err) {
+          console.warn("[ai/enhance-resume] Could not persist enhancement:", err)
+        }
+      }
     }
 
     return NextResponse.json({

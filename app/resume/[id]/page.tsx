@@ -8,11 +8,20 @@ import { TemplateSelector } from "@/components/template-selector"
 import { PDFGenerator } from "@/components/pdf-generator"
 import { MinimalTemplate } from "@/components/resume-templates/minimal-template"
 import { useEffect, useState } from "react"
+import { CorporateTemplate } from "@/components/resume-templates/corporate-template"
+import { CreativeTemplate } from "@/components/resume-templates/creative-template"
 
-export default function ResumeViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ResumeViewPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [id, setId] = useState<string>("")
   const [resumeData, setResumeData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState("minimal")
 
   useEffect(() => {
     // Await params and set id
@@ -43,45 +52,50 @@ export default function ResumeViewPage({ params }: { params: Promise<{ id: strin
     checkAuth()
   }, [])
 
-  // Mock resume data for now
+  // Fetch actual resume data from database
   useEffect(() => {
-    if (id) {
-      setResumeData({
-        personalInfo: {
-          fullName: "John Doe",
-          email: "john.doe@example.com",
-          phone: "+1 (555) 123-4567",
-          location: "San Francisco, CA",
-          summary: "Experienced software developer with expertise in modern web technologies."
-        },
-        skills: ["JavaScript", "React", "Node.js", "Python", "SQL"],
-        workExperience: [
-          {
-            company: "Tech Corp",
-            position: "Senior Developer",
-            startDate: "2020-01",
-            endDate: "",
-            description: "Led development of multiple web applications using React and Node.js",
-            current: true
-          }
-        ],
-        education: [
-          {
-            school: "University of Technology",
-            degree: "Bachelor of Science",
-            field: "Computer Science",
-            graduationDate: "2019-05"
-          }
-        ]
-      })
+    const fetchResumeData = async () => {
+      if (!id) return
+      
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const response = await fetch(`/api/resume/${id}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch resume')
+        }
+        
+        const data = await response.json()
+        if (data.success && data.resume) {
+          setResumeData({
+            personalInfo: data.resume.personalInfo || {},
+            skills: data.resume.skills || [],
+            workExperience: data.resume.workExperience || [],
+            education: data.resume.education || []
+          })
+        } else {
+          throw new Error('Invalid resume data')
+        }
+      } catch (err) {
+        console.error('Error fetching resume:', err)
+        setError('Failed to load resume data')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [id])
+
+    if (id && isAuthenticated) {
+      fetchResumeData()
+    }
+  }, [id, isAuthenticated])
 
   const handleEnhancementComplete = (enhancedData: any) => {
     setResumeData(enhancedData)
   }
 
   const handleTemplateSelect = (template: string) => {
+    setSelectedTemplate(template)
     console.log('Template selected:', template)
   }
 
@@ -89,8 +103,60 @@ export default function ResumeViewPage({ params }: { params: Promise<{ id: strin
     return <div>Loading...</div>
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading resume...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">⚠️</div>
+          <p className="text-gray-900 text-lg mb-2">Error Loading Resume</p>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Link href="/dashboard">
+            <Button>Back to Dashboard</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   if (!resumeData) {
-    return <div>Loading resume...</div>
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-400 text-xl mb-4">📄</div>
+          <p className="text-gray-900 text-lg mb-2">Resume Not Found</p>
+          <p className="text-gray-600 mb-4">The resume you're looking for doesn't exist or you don't have access to it.</p>
+          <Link href="/dashboard">
+            <Button>Back to Dashboard</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // Function to render the selected template
+  const renderSelectedTemplate = () => {
+    if (!resumeData) return null
+    
+    switch (selectedTemplate) {
+      case "corporate":
+        return <CorporateTemplate resumeData={resumeData} />
+      case "creative":
+        return <CreativeTemplate resumeData={resumeData} />
+      case "minimal":
+      default:
+        return <MinimalTemplate resumeData={resumeData} />
+    }
   }
 
   return (
@@ -124,7 +190,7 @@ export default function ResumeViewPage({ params }: { params: Promise<{ id: strin
                 <CardDescription>Preview your resume with the selected template</CardDescription>
               </CardHeader>
               <CardContent>
-                <MinimalTemplate resumeData={resumeData} />
+                {renderSelectedTemplate()}
               </CardContent>
             </Card>
           </div>
@@ -146,31 +212,32 @@ export default function ResumeViewPage({ params }: { params: Promise<{ id: strin
                 <TemplateSelector 
                   resumeData={resumeData} 
                   onTemplateSelect={handleTemplateSelect}
+                  selectedTemplate={selectedTemplate}
                 />
-                <PDFGenerator resumeData={resumeData} />
+                <PDFGenerator resumeData={resumeData} resumeId={id} template={selectedTemplate} />
               </CardContent>
             </Card>
 
-            {/* Styles */}
+            {/* Quick Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Styles</CardTitle>
-                <CardDescription>Choose your preferred design style</CardDescription>
+                <CardTitle>Resume Info</CardTitle>
+                <CardDescription>Details about your resume</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Clean and elegant</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Professional with structure</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Modern sidebar design</span>
-                  </div>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-600">Template</span>
+                  <span className="text-sm text-gray-900">{selectedTemplate}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-600">Last Updated</span>
+                  <span className="text-sm text-gray-900">Just now</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-600">Status</span>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Ready
+                  </span>
                 </div>
               </CardContent>
             </Card>

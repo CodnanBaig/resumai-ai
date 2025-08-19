@@ -24,11 +24,17 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
+// Use a more deterministic ID generation approach
 let count = 0
 
 function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER
-  return count.toString()
+  // Only increment on client side to prevent hydration mismatches
+  if (typeof window !== 'undefined') {
+    count = (count + 1) % Number.MAX_SAFE_INTEGER
+    return count.toString()
+  }
+  // Return a stable ID for SSR
+  return "ssr-toast"
 }
 
 type ActionType = typeof actionTypes

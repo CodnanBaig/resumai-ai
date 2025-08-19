@@ -14,7 +14,11 @@ async function checkAuth() {
   }
 }
 
-export default async function CoverLetterViewPage({ params }: { params: { id: string } }) {
+export default async function CoverLetterViewPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
   await checkAuth()
   const { id } = await params
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileText, Mail, MoreHorizontal, Eye, Download, Trash2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface Document {
   id: string
@@ -19,42 +20,68 @@ interface Document {
   template?: string
 }
 
-export function RecentDocuments() {
-  // TODO: Fetch actual documents from API
-  const [documents] = useState<Document[]>([
-    {
-      id: "1",
-      title: "Software Developer Resume",
-      type: "resume",
-      createdAt: "2024-01-15",
-      status: "completed",
-      template: "minimal",
-    },
-    {
-      id: "2",
-      title: "Senior Developer Resume",
-      type: "resume",
-      createdAt: "2024-01-12",
-      status: "completed",
-      template: "corporate",
-    },
-    {
-      id: "3",
-      title: "Cover Letter - Tech Innovations",
-      type: "cover-letter",
-      company: "Tech Innovations Inc.",
-      createdAt: "2024-01-10",
-      status: "completed",
-    },
-    {
-      id: "4",
-      title: "Cover Letter - StartupCorp",
-      type: "cover-letter",
-      company: "StartupCorp",
-      createdAt: "2024-01-08",
-      status: "draft",
-    },
-  ])
+export function RecentDocuments({ compact = false }: { compact?: boolean }) {
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch("/api/dashboard/documents")
+        if (!res.ok) throw new Error(`Failed: ${res.status}`)
+        const data = await res.json()
+        if (!cancelled) setDocuments(data.documents as Document[])
+      } catch (e) {
+        if (!cancelled) setError("Failed to load documents")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleDelete = async (document: Document) => {
+    setDocumentToDelete(document)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!documentToDelete) return
+
+    try {
+      setDeleting(true)
+      const endpoint = documentToDelete.type === "resume" 
+        ? `/api/resume/${documentToDelete.id}`
+        : `/api/cover-letter/${documentToDelete.id}`
+
+      const res = await fetch(endpoint, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to delete document")
+      }
+
+      // Remove the document from the local state
+      setDocuments(prev => prev.filter(doc => doc.id !== documentToDelete.id))
+      setDeleteDialogOpen(false)
+      setDocumentToDelete(null)
+    } catch (error) {
+      console.error("Error deleting document:", error)
+      setError("Failed to delete document")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const resumes = documents.filter((doc) => doc.type === "resume")
   const coverLetters = documents.filter((doc) => doc.type === "cover-letter")
@@ -95,11 +122,38 @@ export function RecentDocuments() {
                   View
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">
+              {document.type === "resume" && (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/resume/generate-pdf", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ resumeId: document.id, template: document.template || "minimal" }),
+                      })
+                      if (!res.ok) throw new Error("Failed to generate PDF")
+                      const blob = await res.blob()
+                      const url = URL.createObjectURL(blob)
+                      const a = window.document.createElement("a")
+                      a.href = url
+                      a.download = `${document.title || "resume"}.pdf`
+                      window.document.body.appendChild(a)
+                      a.click()
+                      a.remove()
+                      URL.revokeObjectURL(url)
+                    } catch (e) {
+                      console.error(e)
+                    }
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={() => handleDelete(document)}
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete
               </DropdownMenuItem>
@@ -123,7 +177,7 @@ export function RecentDocuments() {
     </Card>
   )
 
-  if (documents.length === 0) {
+  if (!loading && documents.length === 0) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -145,37 +199,74 @@ export function RecentDocuments() {
     )
   }
 
+  const gridClass = compact
+    ? "grid grid-cols-1 gap-4"
+    : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+
   return (
-    <Tabs defaultValue="all" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="all">All Documents ({documents.length})</TabsTrigger>
-        <TabsTrigger value="resumes">Resumes ({resumes.length})</TabsTrigger>
-        <TabsTrigger value="cover-letters">Cover Letters ({coverLetters.length})</TabsTrigger>
-      </TabsList>
+    <>
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className={compact ? "flex w-full gap-2 overflow-x-auto" : "grid w-full grid-cols-3"}>
+          <TabsTrigger value="all">All Documents ({documents.length})</TabsTrigger>
+          <TabsTrigger value="resumes">Resumes ({resumes.length})</TabsTrigger>
+          <TabsTrigger value="cover-letters">Cover Letters ({coverLetters.length})</TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="all" className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} />
-          ))}
-        </div>
-      </TabsContent>
+        <TabsContent value="all" className="space-y-4">
+          <div className={gridClass}>
+            {documents.map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        </TabsContent>
 
-      <TabsContent value="resumes" className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {resumes.map((document) => (
-            <DocumentCard key={document.id} document={document} />
-          ))}
-        </div>
-      </TabsContent>
+        <TabsContent value="resumes" className="space-y-4">
+          <div className={gridClass}>
+            {resumes.map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        </TabsContent>
 
-      <TabsContent value="cover-letters" className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {coverLetters.map((document) => (
-            <DocumentCard key={document.id} document={document} />
-          ))}
-        </div>
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="cover-letters" className="space-y-4">
+          <div className={gridClass}>
+            {coverLetters.map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Document</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{documentToDelete?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setDocumentToDelete(null)
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

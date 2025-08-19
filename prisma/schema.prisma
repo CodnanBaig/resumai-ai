@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -28,7 +28,7 @@ model Resume {
   title        String
   template     String?
   personalInfo Json?
-  skills       String[]
+  skills       Json?
   workExperience Json?
   education    Json?
   content      Json?

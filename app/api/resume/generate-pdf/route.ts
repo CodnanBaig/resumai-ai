@@ -1,85 +1,40 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { createResumePdfBuffer } from "@/lib/pdf/resume-pdf"
+import { prisma } from "@/lib/db"
+import { verifySessionToken } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = request.cookies.get("session")?.value
+    if (!auth) return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+    const session = await verifySessionToken(auth)
+
     const { resumeData, template, resumeId } = await request.json()
 
-    // TODO: Implement actual PDF generation using react-pdf or puppeteer
-    // For now, return a mock PDF response
+    let data = resumeData
+    if (!data && resumeId) {
+      const resume = await prisma.resume.findFirst({ where: { id: resumeId, userId: session.userId } })
+      if (!resume) return NextResponse.json({ message: "Resume not found" }, { status: 404 })
+      data = {
+        personalInfo: resume.personalInfo as any,
+        skills: (resume.skills as any) ?? [],
+        workExperience: resume.workExperience as any,
+        education: resume.education as any,
+      }
+    }
 
-    console.log("[v0] PDF generation requested:", { template, resumeId })
-    console.log("[v0] Resume data:", resumeData)
+    if (!data) return NextResponse.json({ message: "No resume data provided" }, { status: 400 })
 
-    // In a real implementation, you would:
-    // 1. Use react-pdf to render the selected template
-    // 2. Generate PDF buffer
-    // 3. Return PDF as blob
-
-    // Mock PDF content for demonstration
-    const mockPDFContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
->>
-endobj
-
-4 0 obj
-<<
-/Length 44
->>
-stream
-BT
-/F1 12 Tf
-72 720 Td
-(Resume PDF - Template: ${template}) Tj
-ET
-endstream
-endobj
-
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000206 00000 n 
-trailer
-<<
-/Size 5
-/Root 1 0 R
->>
-startxref
-300
-%%EOF`
-
-    const pdfBuffer = Buffer.from(mockPDFContent)
-
-    return new NextResponse(pdfBuffer, {
+    const pdfBuffer = await createResumePdfBuffer({ resumeData: data, template })
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="resume-${resumeId}.pdf"`,
+        "Content-Disposition": `attachment; filename="resume-${resumeId || Date.now()}.pdf"`,
+        "Content-Length": String(pdfBuffer.length),
       },
     })
   } catch (error) {
-    console.error("[v0] Error generating PDF:", error)
+    console.error("[pdf] Error generating PDF:", error)
     return NextResponse.json({ message: "Failed to generate PDF" }, { status: 500 })
   }
 }

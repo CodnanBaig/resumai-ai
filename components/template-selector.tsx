@@ -4,66 +4,67 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { MinimalTemplate } from "./resume-templates/minimal-template"
-import { CorporateTemplate } from "./resume-templates/corporate-template"
-import { CreativeTemplate } from "./resume-templates/creative-template"
+import { Check, Palette, FileText, Briefcase } from "lucide-react"
 
 interface TemplateSelectorProps {
   resumeData: any
   onTemplateSelect: (template: string) => void
+  selectedTemplate: string
 }
 
-export function TemplateSelector({ resumeData, onTemplateSelect }: TemplateSelectorProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState("minimal")
+export function TemplateSelector({ resumeData, onTemplateSelect, selectedTemplate }: TemplateSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const templates = [
     {
       id: "minimal",
       name: "Minimal",
-      description: "Clean and simple design with elegant typography.",
-      component: MinimalTemplate,
-      preview: "/api/resume/preview/minimal"
+      description: "Clean and simple design with elegant typography. Perfect for traditional industries.",
+      icon: FileText,
+      features: ["Professional layout", "Easy to read", "ATS friendly"],
+      color: "bg-blue-50 border-blue-200"
     },
     {
       id: "corporate",
       name: "Corporate",
-      description: "Professional layout with bold headers and structured sections.",
-      component: CorporateTemplate,
-      preview: "/api/resume/preview/corporate"
+      description: "Professional layout with bold headers and structured sections. Ideal for business roles.",
+      icon: Briefcase,
+      features: ["Bold design", "Structured sections", "Executive look"],
+      color: "bg-gray-50 border-gray-200"
     },
     {
       id: "creative",
       name: "Creative",
-      description: "Modern sidebar design with visual skill indicators.",
-      component: CreativeTemplate,
-      preview: "/api/resume/preview/creative"
+      description: "Modern sidebar design with visual skill indicators. Great for creative and tech roles.",
+      icon: Palette,
+      features: ["Modern design", "Visual elements", "Creative layout"],
+      color: "bg-purple-50 border-purple-200"
     }
   ]
 
   const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId)
     onTemplateSelect(templateId)
     setIsOpen(false)
   }
-
-  const SelectedTemplateComponent = templates.find(t => t.id === selectedTemplate)?.component || MinimalTemplate
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Current Template</h3>
-          <p className="text-sm text-gray-600">Selected: {templates.find(t => t.id === selectedTemplate)?.name}</p>
+          <p className="text-sm text-gray-600">
+            Selected: <span className="font-medium">{templates.find(t => t.id === selectedTemplate)?.name}</span>
+          </p>
         </div>
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" className="w-full sm:w-auto">
+              <Palette className="w-4 h-4 mr-2" />
               Choose Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="mobile-modal-content max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl sm:text-2xl">Choose Resume Template</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
@@ -73,73 +74,106 @@ export function TemplateSelector({ resumeData, onTemplateSelect }: TemplateSelec
             
             <div className="space-y-6">
               {/* Template Options */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                {templates.map((template) => (
-                  <Card 
-                    key={template.id} 
-                    className={`mobile-card cursor-pointer transition-all duration-200 hover:shadow-lg ${
-                      selectedTemplate === template.id 
-                        ? 'ring-2 ring-blue-500 bg-blue-50' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                    onClick={() => handleTemplateSelect(template.id)}
-                  >
-                    <CardHeader className="text-center pb-3">
-                      <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                        <template.component resumeData={resumeData} />
-                      </div>
-                      <CardTitle className="text-base sm:text-lg">{template.name}</CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">
-                        {template.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="flex flex-col sm:flex-row gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {templates.map((template) => {
+                  const IconComponent = template.icon
+                  const isSelected = selectedTemplate === template.id
+                  
+                  return (
+                    <Card 
+                      key={template.id} 
+                      className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
+                        isSelected 
+                          ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' 
+                          : `hover:bg-gray-50 ${template.color}`
+                      }`}
+                      onClick={() => handleTemplateSelect(template.id)}
+                    >
+                      <CardHeader className="text-center pb-3">
+                        <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                          isSelected ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          <IconComponent className="w-8 h-8" />
+                        </div>
+                        <CardTitle className="text-lg font-semibold">{template.name}</CardTitle>
+                        <CardDescription className="text-sm text-gray-600">
+                          {template.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        {/* Features */}
+                        <div className="space-y-2 mb-4">
+                          {template.features.map((feature, index) => (
+                            <div key={index} className="flex items-center text-sm text-gray-600">
+                              <Check className="w-4 h-4 mr-2 text-green-500 flex-shrink-0" />
+                              {feature}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Action Button */}
                         <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1 text-xs sm:text-sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            // Preview functionality would go here
-                          }}
-                        >
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          Preview
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          className="flex-1 text-xs sm:text-sm"
+                          className={`w-full ${
+                            isSelected 
+                              ? 'bg-blue-600 hover:bg-blue-700' 
+                              : 'bg-gray-600 hover:bg-gray-700'
+                          }`}
                           onClick={(e) => {
                             e.stopPropagation()
                             handleTemplateSelect(template.id)
                           }}
                         >
-                          {selectedTemplate === template.id ? (
+                          {isSelected ? (
                             <>
-                              <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
+                              <Check className="w-4 h-4 mr-2" />
                               Selected
                             </>
                           ) : (
-                            'Select'
+                            'Select Template'
                           )}
                         </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
               
-              {/* Current Template Preview */}
+              {/* Template Comparison */}
               <div className="border-t pt-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Current Template Preview</h4>
-                <div className="border rounded-lg overflow-hidden bg-white">
-                  <SelectedTemplateComponent resumeData={resumeData} />
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Template Comparison</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 font-medium">Feature</th>
+                        {templates.map(template => (
+                          <th key={template.id} className="text-center py-2 font-medium">
+                            {template.name}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b">
+                        <td className="py-2">Best For</td>
+                        <td className="text-center py-2">Traditional industries</td>
+                        <td className="text-center py-2">Business roles</td>
+                        <td className="text-center py-2">Creative/Tech roles</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2">Layout Style</td>
+                        <td className="text-center py-2">Clean & simple</td>
+                        <td className="text-center py-2">Structured & bold</td>
+                        <td className="text-center py-2">Modern & visual</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2">ATS Friendly</td>
+                        <td className="text-center py-2">✅ Excellent</td>
+                        <td className="text-center py-2">✅ Good</td>
+                        <td className="text-center py-2">⚠️ Moderate</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

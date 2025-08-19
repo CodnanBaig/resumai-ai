@@ -20,16 +20,19 @@ export async function GET() {
 
     const models = await response.json()
 
-    // Filter for free models suitable for resume enhancement
-    const freeModels = models.data.filter(
-      (model: any) =>
-        model.pricing?.prompt === "0" || model.id.includes("gpt-3.5-turbo") || model.id.includes("mistral-7b-instruct"),
+    // Filter for free models suitable for resume enhancement, prioritizing Gemma 3
+    const freeModels = models.data.filter((m: { id: string; pricing?: { prompt: string } }) =>
+      m.pricing?.prompt === "0" || m.id.includes("gemma-3") || m.id.endsWith(":free"),
     )
 
     return NextResponse.json({
       success: true,
       models: freeModels,
-      recommended: ["openai/gpt-3.5-turbo", "mistralai/mistral-7b-instruct", "meta-llama/llama-3.2-3b-instruct:free"],
+      recommended: [
+        "google/gemma-3-27b-it:free",
+        "google/gemma-3-12b-it:free",
+        "google/gemma-3-4b-it:free",
+      ],
     })
   } catch (error) {
     console.error("[v0] Error fetching models:", error)

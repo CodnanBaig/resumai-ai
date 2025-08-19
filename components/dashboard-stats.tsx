@@ -1,14 +1,37 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileText, Mail, Sparkles, Download } from "lucide-react"
+import { useEffect, useState } from "react"
+
+type Stats = {
+  totalResumes: number
+  totalCoverLetters: number
+  aiEnhancements: number
+  totalDownloads: number
+}
 
 export function DashboardStats() {
-  // TODO: Fetch actual stats from API
-  const stats = {
-    totalResumes: 3,
-    totalCoverLetters: 2,
-    aiEnhancements: 5,
-    totalDownloads: 8,
-  }
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch("/api/dashboard/stats")
+        if (!res.ok) throw new Error(`Failed: ${res.status}`)
+        const data = await res.json()
+        if (!cancelled) setStats(data.stats as Stats)
+      } catch (e: any) {
+        if (!cancelled) setError("Failed to load stats")
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -18,7 +41,7 @@ export function DashboardStats() {
           <FileText className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalResumes}</div>
+          <div className="text-2xl font-bold">{stats?.totalResumes ?? "—"}</div>
           <p className="text-xs text-muted-foreground">Active resume versions</p>
         </CardContent>
       </Card>
@@ -29,7 +52,7 @@ export function DashboardStats() {
           <Mail className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalCoverLetters}</div>
+          <div className="text-2xl font-bold">{stats?.totalCoverLetters ?? "—"}</div>
           <p className="text-xs text-muted-foreground">Generated this month</p>
         </CardContent>
       </Card>
@@ -40,7 +63,7 @@ export function DashboardStats() {
           <Sparkles className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.aiEnhancements}</div>
+          <div className="text-2xl font-bold">{stats?.aiEnhancements ?? "—"}</div>
           <p className="text-xs text-muted-foreground">AI improvements made</p>
         </CardContent>
       </Card>
@@ -51,7 +74,7 @@ export function DashboardStats() {
           <Download className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalDownloads}</div>
+          <div className="text-2xl font-bold">{stats?.totalDownloads ?? "—"}</div>
           <p className="text-xs text-muted-foreground">PDF downloads</p>
         </CardContent>
       </Card>

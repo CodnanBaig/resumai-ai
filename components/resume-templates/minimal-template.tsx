@@ -24,35 +24,35 @@ interface ResumeData {
 }
 
 interface MinimalTemplateProps {
-  data: ResumeData
+  resumeData: ResumeData
 }
 
-export function MinimalTemplate({ data }: MinimalTemplateProps) {
+export function MinimalTemplate({ resumeData }: MinimalTemplateProps) {
   return (
     <div className="max-w-2xl mx-auto bg-white text-black p-8 font-sans">
       {/* Header */}
       <div className="text-center mb-8 pb-6 border-b border-gray-300">
-        <h1 className="text-3xl font-light mb-2">{data.personalInfo.fullName}</h1>
+        <h1 className="text-3xl font-light mb-2">{resumeData.personalInfo.fullName}</h1>
         <div className="text-sm text-gray-600 space-x-2">
-          <span>{data.personalInfo.email}</span>
+          <span>{resumeData.personalInfo.email}</span>
           <span>•</span>
-          <span>{data.personalInfo.phone}</span>
+          <span>{resumeData.personalInfo.phone}</span>
           <span>•</span>
-          <span>{data.personalInfo.location}</span>
+          <span>{resumeData.personalInfo.location}</span>
         </div>
       </div>
 
       {/* Summary */}
-      {data.personalInfo.summary && (
+      {resumeData.personalInfo.summary && (
         <div className="mb-6">
-          <p className="text-gray-700 leading-relaxed">{data.personalInfo.summary}</p>
+          <p className="text-gray-700 leading-relaxed">{resumeData.personalInfo.summary}</p>
         </div>
       )}
 
       {/* Experience */}
       <div className="mb-6">
         <h2 className="text-lg font-medium mb-4 text-black">Experience</h2>
-        {data.workExperience.map((exp, index) => (
+        {resumeData.workExperience.map((exp, index) => (
           <div key={index} className="mb-4">
             <div className="flex justify-between items-start mb-1">
               <h3 className="font-medium text-black">{exp.position}</h3>
@@ -69,7 +69,7 @@ export function MinimalTemplate({ data }: MinimalTemplateProps) {
       {/* Education */}
       <div className="mb-6">
         <h2 className="text-lg font-medium mb-4 text-black">Education</h2>
-        {data.education.map((edu, index) => (
+        {resumeData.education.map((edu, index) => (
           <div key={index} className="mb-3">
             <div className="flex justify-between items-start">
               <div>
@@ -88,10 +88,10 @@ export function MinimalTemplate({ data }: MinimalTemplateProps) {
       <div>
         <h2 className="text-lg font-medium mb-4 text-black">Skills</h2>
         <div className="flex flex-wrap gap-2">
-          {data.skills.map((skill, index) => (
+          {resumeData.skills.map((skill, index) => (
             <span key={index} className="text-sm text-gray-700">
               {skill}
-              {index < data.skills.length - 1 ? " •" : ""}
+              {index < resumeData.skills.length - 1 ? " •" : ""}
             </span>
           ))}
         </div>

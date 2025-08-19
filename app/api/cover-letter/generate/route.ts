@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
     const { resumeId, companyName, jobTitle, jobDescription, additionalInfo } = await request.json()
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
+    const model = process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free"
 
     if (!openRouterApiKey) {
       return NextResponse.json(
@@ -33,7 +34,7 @@ Job Description: ${jobDescription}
 Applicant Resume Summary:
 Name: ${session.email}
 Summary: ${(resume?.personalInfo as any)?.summary ?? ""}
-Skills: ${(resume?.skills ?? []).join(", ")}
+Skills: ${Array.isArray(resume?.skills) ? (resume.skills as string[]).join(", ") : ""}
 Recent Experience: ${(resume?.workExperience as any)?.[0]?.position ?? ""} at ${(resume?.workExperience as any)?.[0]?.company ?? ""}
 Education: ${(resume?.education as any)?.[0]?.degree ?? ""} in ${(resume?.education as any)?.[0]?.field ?? ""}
 
@@ -59,7 +60,7 @@ Format the response as a complete cover letter with proper business letter forma
         "X-Title": "ResumeAI Builder",
       },
       body: JSON.stringify({
-        model: "openai/gpt-3.5-turbo",
+        model,
         messages: [
           { role: "system", content: "You are a professional career coach and expert cover letter writer. Write compelling, personalized cover letters that help candidates stand out to employers." },
           { role: "user", content: prompt },

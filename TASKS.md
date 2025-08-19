@@ -19,12 +19,22 @@ Tracks database integration and authentication replacement.
   - `GET /api/dashboard/stats`
   - `GET /api/dashboard/documents`
 - Tailwind v3 configured and compiling
+- Add list & CRUD APIs:
+  - `GET /api/resume` (paginated)
+  - `GET/PUT/DELETE /api/resume/[id]`
+  - `GET /api/cover-letter` (paginated)
+  - `GET/DELETE /api/cover-letter/[id]`
+  - `PUT /api/cover-letter?id=...`
+  - AI enhancement optionally persists into resume when `resumeId` provided
 
 ## In Progress
+- Switch to MySQL locally (Docker) and for production
 - Migrations and DB provisioning
 - Wire AI endpoints to use stored resumes when applicable
 
 ## TODO
+- Create `.env.local` and `.env.production` with MySQL URLs
+- Data backups and migration strategy from local to live
 - Add `Activity` model for recent actions
 - Implement update endpoints for resumes and cover letters
 - Real PDF generation using react-pdf or Puppeteer

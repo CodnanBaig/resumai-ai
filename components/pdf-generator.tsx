@@ -16,6 +16,15 @@ export function PDFGenerator({ resumeData, template = "minimal", resumeId }: PDF
   const { toast } = useToast()
 
   const handleDownloadPDF = async () => {
+    if (!resumeData || !resumeData.personalInfo) {
+      toast({
+        title: "Error",
+        description: "No resume data available for PDF generation",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsGenerating(true)
 
     try {
@@ -31,10 +40,15 @@ export function PDFGenerator({ resumeData, template = "minimal", resumeId }: PDF
 
       if (response.ok) {
         const blob = await response.blob()
+        
+        if (blob.size === 0) {
+          throw new Error("Generated PDF is empty")
+        }
+        
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
-        a.download = `resume-${resumeId}.pdf`
+        a.download = `resume-${resumeId || 'download'}.pdf`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)
@@ -45,17 +59,32 @@ export function PDFGenerator({ resumeData, template = "minimal", resumeId }: PDF
           description: "Resume PDF downloaded successfully",
         })
       } else {
-        const error = await response.json()
+        let errorMessage = "Failed to generate PDF"
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorMessage
+        } catch {
+          // If we can't parse the error response, use the status text
+          errorMessage = response.statusText || errorMessage
+        }
+        
         toast({
           title: "Error",
-          description: error.message || "Failed to generate PDF",
+          description: errorMessage,
           variant: "destructive",
+        })
+        
+        console.error("PDF generation failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage
         })
       }
     } catch (error) {
+      console.error("PDF generation error:", error)
       toast({
         title: "Error",
-        description: "Something went wrong while generating PDF",
+        description: error instanceof Error ? error.message : "Something went wrong while generating PDF",
         variant: "destructive",
       })
     } finally {

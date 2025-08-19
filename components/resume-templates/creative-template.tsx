@@ -24,20 +24,20 @@ interface ResumeData {
 }
 
 interface CreativeTemplateProps {
-  data: ResumeData
+  resumeData: ResumeData
 }
 
-export function CreativeTemplate({ data }: CreativeTemplateProps) {
+export function CreativeTemplate({ resumeData }: CreativeTemplateProps) {
   return (
     <div className="max-w-2xl mx-auto bg-white text-black font-sans flex">
       {/* Left Sidebar */}
       <div className="w-1/3 bg-gray-100 p-6">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2 text-black">{data.personalInfo.fullName}</h1>
+          <h1 className="text-2xl font-bold mb-2 text-black">{resumeData.personalInfo.fullName}</h1>
           <div className="text-sm text-gray-600 space-y-1">
-            <p>{data.personalInfo.email}</p>
-            <p>{data.personalInfo.phone}</p>
-            <p>{data.personalInfo.location}</p>
+            <p>{resumeData.personalInfo.email}</p>
+            <p>{resumeData.personalInfo.phone}</p>
+            <p>{resumeData.personalInfo.location}</p>
           </div>
         </div>
 
@@ -45,7 +45,7 @@ export function CreativeTemplate({ data }: CreativeTemplateProps) {
         <div className="mb-8">
           <h2 className="text-lg font-bold mb-4 text-black">Skills</h2>
           <div className="space-y-2">
-            {data.skills.map((skill, index) => (
+            {resumeData.skills.map((skill, index) => (
               <div key={index} className="relative">
                 <span className="text-sm text-gray-700">{skill}</span>
                 <div className="mt-1 w-full bg-gray-300 rounded-full h-1">
@@ -59,7 +59,7 @@ export function CreativeTemplate({ data }: CreativeTemplateProps) {
         {/* Education */}
         <div>
           <h2 className="text-lg font-bold mb-4 text-black">Education</h2>
-          {data.education.map((edu, index) => (
+          {resumeData.education.map((edu, index) => (
             <div key={index} className="mb-4">
               <h3 className="font-semibold text-sm text-black">{edu.degree}</h3>
               <p className="text-xs text-gray-600 mb-1">{edu.field}</p>
@@ -73,13 +73,13 @@ export function CreativeTemplate({ data }: CreativeTemplateProps) {
       {/* Right Content */}
       <div className="w-2/3 p-6">
         {/* Summary */}
-        {data.personalInfo.summary && (
+        {resumeData.personalInfo.summary && (
           <div className="mb-8">
             <div className="flex items-center mb-3">
               <div className="w-8 h-0.5 bg-black mr-3"></div>
               <h2 className="text-lg font-bold text-black">About Me</h2>
             </div>
-            <p className="text-gray-700 leading-relaxed text-sm">{data.personalInfo.summary}</p>
+            <p className="text-gray-700 leading-relaxed text-sm">{resumeData.personalInfo.summary}</p>
           </div>
         )}
 
@@ -89,7 +89,7 @@ export function CreativeTemplate({ data }: CreativeTemplateProps) {
             <div className="w-8 h-0.5 bg-black mr-3"></div>
             <h2 className="text-lg font-bold text-black">Experience</h2>
           </div>
-          {data.workExperience.map((exp, index) => (
+          {resumeData.workExperience.map((exp, index) => (
             <div key={index} className="mb-6 relative pl-4">
               <div className="absolute left-0 top-2 w-2 h-2 bg-black rounded-full"></div>
               <div className="absolute left-0.5 top-4 w-0.5 h-full bg-gray-300"></div>

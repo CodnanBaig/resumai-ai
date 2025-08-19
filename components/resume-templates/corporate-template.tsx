@@ -24,31 +24,31 @@ interface ResumeData {
 }
 
 interface CorporateTemplateProps {
-  data: ResumeData
+  resumeData: ResumeData
 }
 
-export function CorporateTemplate({ data }: CorporateTemplateProps) {
+export function CorporateTemplate({ resumeData }: CorporateTemplateProps) {
   return (
     <div className="max-w-2xl mx-auto bg-white text-black font-serif">
       {/* Header */}
       <div className="bg-gray-900 text-white p-8 mb-0">
-        <h1 className="text-4xl font-bold mb-3">{data.personalInfo.fullName}</h1>
+        <h1 className="text-4xl font-bold mb-3">{resumeData.personalInfo.fullName}</h1>
         <div className="text-gray-300 space-y-1">
           <p>
-            {data.personalInfo.email} | {data.personalInfo.phone}
+            {resumeData.personalInfo.email} | {resumeData.personalInfo.phone}
           </p>
-          <p>{data.personalInfo.location}</p>
+          <p>{resumeData.personalInfo.location}</p>
         </div>
       </div>
 
       <div className="p-8">
         {/* Summary */}
-        {data.personalInfo.summary && (
+        {resumeData.personalInfo.summary && (
           <div className="mb-8">
             <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-gray-900 pb-1">
               PROFESSIONAL SUMMARY
             </h2>
-            <p className="text-gray-700 leading-relaxed">{data.personalInfo.summary}</p>
+            <p className="text-gray-700 leading-relaxed">{resumeData.personalInfo.summary}</p>
           </div>
         )}
 
@@ -57,7 +57,7 @@ export function CorporateTemplate({ data }: CorporateTemplateProps) {
           <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-gray-900 pb-1">
             PROFESSIONAL EXPERIENCE
           </h2>
-          {data.workExperience.map((exp, index) => (
+          {resumeData.workExperience.map((exp, index) => (
             <div key={index} className="mb-6">
               <div className="flex justify-between items-start mb-2">
                 <div>
@@ -76,7 +76,7 @@ export function CorporateTemplate({ data }: CorporateTemplateProps) {
         {/* Education */}
         <div className="mb-8">
           <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-gray-900 pb-1">EDUCATION</h2>
-          {data.education.map((edu, index) => (
+          {resumeData.education.map((edu, index) => (
             <div key={index} className="mb-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -95,7 +95,7 @@ export function CorporateTemplate({ data }: CorporateTemplateProps) {
         <div>
           <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-gray-900 pb-1">CORE COMPETENCIES</h2>
           <div className="grid grid-cols-2 gap-2">
-            {data.skills.map((skill, index) => (
+            {resumeData.skills.map((skill, index) => (
               <div key={index} className="flex items-center">
                 <div className="w-2 h-2 bg-gray-900 mr-3"></div>
                 <span className="text-gray-700">{skill}</span>

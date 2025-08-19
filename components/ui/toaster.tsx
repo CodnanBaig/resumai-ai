@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import {
   Toast,
   ToastClose,
@@ -10,7 +11,7 @@ import {
 } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 
-export function Toaster() {
+function ToasterComponent() {
   const { toasts } = useToast()
 
   return (
@@ -33,4 +34,9 @@ export function Toaster() {
     </ToastProvider>
   )
 }
+
+// Use dynamic import with ssr: false to prevent hydration mismatches
+export const Toaster = dynamic(() => Promise.resolve(ToasterComponent), {
+  ssr: false,
+})
 

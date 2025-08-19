@@ -31,6 +31,7 @@ export function ResumeForm() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   
+  const [title, setTitle] = useState("")
   const [personalInfo, setPersonalInfo] = useState({
     fullName: "",
     email: "",
@@ -135,6 +136,7 @@ export function ResumeForm() {
 
     try {
       const resumeData = {
+        title: title || `${personalInfo.fullName}'s Resume`,
         personalInfo,
         skills,
         workExperience,
@@ -173,6 +175,28 @@ export function ResumeForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Resume Title */}
+      <Card className="mobile-card">
+        <CardHeader>
+          <CardTitle className="text-lg sm:text-xl">Resume Title</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
+            Give your resume a descriptive name
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="title">Resume Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Software Engineer Resume, Marketing Manager CV"
+              className="w-full"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Personal Information */}
       <Card className="mobile-card">
         <CardHeader>
