@@ -1,7 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
+import { verifySessionToken } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = request.cookies.get("session")?.value
+    if (!auth) return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+    const session = await verifySessionToken(auth)
+
     const { resumeId, companyName, jobTitle, jobDescription, additionalInfo } = await request.json()
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
@@ -13,35 +19,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Fetch actual resume data from database
-    const mockResumeData = {
-      personalInfo: {
-        fullName: "John Doe",
-        email: "john.doe@example.com",
-        phone: "(555) 123-4567",
-        location: "New York, NY",
-        summary: "Experienced software developer with 5+ years in web development",
-      },
-      skills: ["JavaScript", "React", "Node.js", "Python", "SQL"],
-      workExperience: [
-        {
-          company: "Tech Corp",
-          position: "Senior Developer",
-          startDate: "2021-01",
-          endDate: "",
-          description: "Led development of web applications using React and Node.js",
-          current: true,
-        },
-      ],
-      education: [
-        {
-          school: "University of Technology",
-          degree: "Bachelor of Science",
-          field: "Computer Science",
-          graduationDate: "2019-05",
-        },
-      ],
-    }
+    // Optional: fetch resume data to enrich prompt
+    const resume = resumeId
+      ? await prisma.resume.findFirst({ where: { id: resumeId, userId: session.userId } })
+      : null
 
     const prompt = `Write a professional cover letter for the following job application:
 
@@ -50,11 +31,11 @@ Job Title: ${jobTitle}
 Job Description: ${jobDescription}
 
 Applicant Resume Summary:
-Name: ${mockResumeData.personalInfo.fullName}
-Summary: ${mockResumeData.personalInfo.summary}
-Skills: ${mockResumeData.skills.join(", ")}
-Recent Experience: ${mockResumeData.workExperience[0]?.position} at ${mockResumeData.workExperience[0]?.company}
-Education: ${mockResumeData.education[0]?.degree} in ${mockResumeData.education[0]?.field}
+Name: ${session.email}
+Summary: ${(resume?.personalInfo as any)?.summary ?? ""}
+Skills: ${(resume?.skills ?? []).join(", ")}
+Recent Experience: ${(resume?.workExperience as any)?.[0]?.position ?? ""} at ${(resume?.workExperience as any)?.[0]?.company ?? ""}
+Education: ${(resume?.education as any)?.[0]?.degree ?? ""} in ${(resume?.education as any)?.[0]?.field ?? ""}
 
 ${additionalInfo ? `Additional Information: ${additionalInfo}` : ""}
 
@@ -80,15 +61,8 @@ Format the response as a complete cover letter with proper business letter forma
       body: JSON.stringify({
         model: "openai/gpt-3.5-turbo",
         messages: [
-          {
-            role: "system",
-            content:
-              "You are a professional career coach and expert cover letter writer. Write compelling, personalized cover letters that help candidates stand out to employers.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
+          { role: "system", content: "You are a professional career coach and expert cover letter writer. Write compelling, personalized cover letters that help candidates stand out to employers." },
+          { role: "user", content: prompt },
         ],
         temperature: 0.7,
         max_tokens: 1000,
@@ -108,23 +82,24 @@ Format the response as a complete cover letter with proper business letter forma
       return NextResponse.json({ message: "No cover letter generated" }, { status: 500 })
     }
 
-    // TODO: Save cover letter to database
-    const mockCoverLetterId = Date.now().toString()
-
-    console.log("[v0] Cover letter generated:", {
-      id: mockCoverLetterId,
-      companyName,
-      jobTitle,
-      resumeId,
+    const saved = await prisma.coverLetter.create({
+      data: {
+        userId: session.userId,
+        resumeId: resume?.id ?? null,
+        company: companyName ?? null,
+        jobTitle: jobTitle ?? null,
+        content: coverLetterContent,
+      },
+      select: { id: true },
     })
 
     return NextResponse.json({
       success: true,
-      id: mockCoverLetterId,
+      id: saved.id,
       content: coverLetterContent,
       companyName,
       jobTitle,
-      resumeId,
+      resumeId: resume?.id ?? null,
     })
   } catch (error) {
     console.error("[v0] Error generating cover letter:", error)

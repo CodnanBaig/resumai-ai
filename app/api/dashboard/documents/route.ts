@@ -1,57 +1,53 @@
 import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
+import { cookies } from "next/headers"
+import { verifySessionToken } from "@/lib/auth"
 
 export async function GET() {
   try {
-    // TODO: Fetch actual user documents from database
-    // For now, return mock data
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+    if (!sessionToken) return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+    const session = await verifySessionToken(sessionToken)
+
+    const [resumes, coverLetters] = await Promise.all([
+      prisma.resume.findMany({
+        where: { userId: session.userId },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, title: true, template: true, createdAt: true, updatedAt: true },
+      }),
+      prisma.coverLetter.findMany({
+        where: { userId: session.userId },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, company: true, jobTitle: true, createdAt: true, updatedAt: true },
+      }),
+    ])
 
     const documents = [
-      {
-        id: "1",
-        title: "Software Developer Resume",
-        type: "resume",
-        createdAt: "2024-01-15T10:30:00Z",
-        updatedAt: "2024-01-15T10:30:00Z",
-        status: "completed",
-        template: "minimal",
-      },
-      {
-        id: "2",
-        title: "Senior Developer Resume",
-        type: "resume",
-        createdAt: "2024-01-12T14:20:00Z",
-        updatedAt: "2024-01-12T14:20:00Z",
-        status: "completed",
-        template: "corporate",
-      },
-      {
-        id: "3",
-        title: "Cover Letter - Tech Innovations",
-        type: "cover-letter",
-        company: "Tech Innovations Inc.",
-        jobTitle: "Senior Software Engineer",
-        createdAt: "2024-01-10T16:45:00Z",
-        updatedAt: "2024-01-10T16:45:00Z",
-        status: "completed",
-      },
-      {
-        id: "4",
-        title: "Cover Letter - StartupCorp",
-        type: "cover-letter",
-        company: "StartupCorp",
-        jobTitle: "Full Stack Developer",
-        createdAt: "2024-01-08T11:15:00Z",
-        updatedAt: "2024-01-08T11:15:00Z",
-        status: "draft",
-      },
+      ...resumes.map((r) => ({
+        id: r.id,
+        title: r.title,
+        type: "resume" as const,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        status: "completed" as const,
+        template: r.template ?? undefined,
+      })),
+      ...coverLetters.map((c) => ({
+        id: c.id,
+        title: `Cover Letter${c.company ? ` - ${c.company}` : ""}`,
+        type: "cover-letter" as const,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        status: "completed" as const,
+        company: c.company ?? undefined,
+        jobTitle: c.jobTitle ?? undefined,
+      })),
     ]
 
-    return NextResponse.json({
-      success: true,
-      documents,
-    })
+    return NextResponse.json({ success: true, documents })
   } catch (error) {
-    console.error("[v0] Error fetching documents:", error)
+    console.error("[dashboard/documents]", error)
     return NextResponse.json({ message: "Failed to fetch documents" }, { status: 500 })
   }
 }

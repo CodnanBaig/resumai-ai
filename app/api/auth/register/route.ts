@@ -1,34 +1,43 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
+import { hashPassword, createSessionToken } from "@/lib/auth"
+import { z } from "zod"
+
+const RegisterSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(8),
+})
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json()
+    const json = await request.json()
+    const { name, email, password } = RegisterSchema.parse(json)
 
-    // TODO: Replace with actual database operations
-    // For now, using mock registration
+    const existing = await prisma.user.findUnique({ where: { email } })
+    if (existing) {
+      return NextResponse.json({ message: "User already exists" }, { status: 409 })
+    }
 
-    // In a real app, you would:
-    // 1. Validate input data
-    // 2. Check if user already exists
-    // 3. Hash password
-    // 4. Save user to database
-    // 5. Generate JWT token
+    const passwordHash = await hashPassword(password)
+    const user = await prisma.user.create({ data: { name, email, passwordHash } })
 
-    const response = NextResponse.json({
-      success: true,
-      user: { email, name },
-    })
+    const token = await createSessionToken({ userId: user.id, email: user.email })
 
-    // Set a simple session cookie (replace with JWT in production)
-    response.cookies.set("session", "demo-session", {
+    const response = NextResponse.json({ success: true, user: { id: user.id, email: user.email, name: user.name } })
+    response.cookies.set("session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
     })
 
     return response
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === "ZodError") {
+      return NextResponse.json({ message: "Invalid input" }, { status: 400 })
+    }
     return NextResponse.json({ message: "Internal server error" }, { status: 500 })
   }
 }
