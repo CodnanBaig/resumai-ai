@@ -2,62 +2,76 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const { resumeData, jobDescription, enhancementType, resumeId } = await request.json()
+    // Check authentication first
+    const sessionToken = request.cookies.get("session")?.value
+    if (!sessionToken) return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
 
-    // TODO: Add OpenRouter API key to environment variables
+    const { verifySessionToken } = await import("@/lib/auth")
+    const session = await verifySessionToken(sessionToken)
+
+    const { resumeData, jobDescription, enhancementType, resumeId, customPrompt } = await request.json()
+
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
     const model = process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free"
 
     if (!openRouterApiKey) {
       return NextResponse.json(
-        { message: "OpenRouter API key not configured. Please add OPENROUTER_API_KEY to your environment variables." },
+        { message: "AI enhancement service is currently unavailable. Please try again later." },
         { status: 500 },
       )
     }
 
     let prompt = ""
 
-    switch (enhancementType) {
-      case "improve":
-        prompt = `Please improve this resume content to make it more professional and impactful. Focus on:
-        1. Strengthening action verbs and quantifying achievements
-        2. Improving clarity and conciseness
-        3. Adding relevant industry keywords
-        4. Enhancing the professional summary
+    if (customPrompt) {
+      // Use custom prompt for inline enhancement
+      prompt = customPrompt
+    } else {
+      // Use predefined prompts for the dialog enhancement
+      switch (enhancementType) {
+        case "improve":
+          prompt = `Please improve this resume content to make it more professional, concise, and impactful. Focus on:
+          1. Strengthening action verbs and quantifying achievements
+          2. Making content shorter and more snappy
+          3. Adding relevant industry keywords
+          4. Using bullet points for key highlights
+          5. Keeping descriptions brief and scannable
 
-        Resume Data: ${JSON.stringify(resumeData, null, 2)}
+          Resume Data: ${JSON.stringify(resumeData, null, 2)}
 
-        Return the enhanced resume in the same JSON format.`
-        break
+          Return the enhanced resume in the same JSON format with shorter, bullet-point content.`
+          break
 
-      case "tailor":
-        prompt = `Please tailor this resume to match the following job description. Focus on:
-        1. Highlighting relevant skills and experience
-        2. Adding keywords from the job description
-        3. Emphasizing matching qualifications
-        4. Adjusting the professional summary to align with the role
+        case "tailor":
+          prompt = `Please tailor this resume to match the following job description. Focus on:
+          1. Highlighting relevant skills and experience
+          2. Adding keywords from the job description
+          3. Emphasizing matching qualifications
+          4. Making content concise and bullet-point focused
+          5. Keeping descriptions short and impactful
 
-        Job Description: ${jobDescription}
-        
-        Resume Data: ${JSON.stringify(resumeData, null, 2)}
+          Job Description: ${jobDescription}
+          
+          Resume Data: ${JSON.stringify(resumeData, null, 2)}
 
-        Return the tailored resume in the same JSON format.`
-        break
+          Return the tailored resume in the same JSON format with shorter, bullet-point content.`
+          break
 
-      case "keywords":
-        prompt = `Analyze this resume and suggest industry-relevant keywords that should be added. Focus on:
-        1. Technical skills relevant to the field
-        2. Industry-specific terminology
-        3. Action verbs that demonstrate impact
-        4. Certifications or qualifications commonly sought
+        case "keywords":
+          prompt = `Analyze this resume and suggest industry-relevant keywords that should be added. Focus on:
+          1. Technical skills relevant to the field
+          2. Industry-specific terminology
+          3. Action verbs that demonstrate impact
+          4. Certifications or qualifications commonly sought
 
-        Resume Data: ${JSON.stringify(resumeData, null, 2)}
+          Resume Data: ${JSON.stringify(resumeData, null, 2)}
 
-        Return a JSON object with: { "suggestedKeywords": ["keyword1", "keyword2", ...], "recommendations": "explanation of why these keywords are important" }`
-        break
+          Return a JSON object with: { "suggestedKeywords": ["keyword1", "keyword2", ...], "recommendations": "Brief explanation of why these keywords are important (max 2 sentences)" }`
+          break
 
-      default:
-        return NextResponse.json({ message: "Invalid enhancement type" }, { status: 400 })
+        default:
+          return NextResponse.json({ message: "Invalid enhancement type" }, { status: 400 })
+      }
     }
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -74,7 +88,7 @@ export async function POST(request: NextRequest) {
           {
             role: "system",
             content:
-              "You are a professional resume writer and career coach. Provide helpful, accurate, and professional advice for improving resumes.",
+              "You are a professional resume writer and career coach. Generate ONLY clean, professional text without any markdown formatting, explanations, or commentary. Do not include bullet points (• or *), bold formatting (**text**), explanations, or meta-commentary. Provide clean text that can be directly copied into a resume field. Focus on concise, impactful sentences with strong action verbs and quantifiable achievements where possible.",
           },
           {
             role: "user",
@@ -110,25 +124,20 @@ export async function POST(request: NextRequest) {
 
     // Optionally persist enhancement into an existing resume
     if (resumeId && (enhancementType === "improve" || enhancementType === "tailor") && result) {
-      const token = request.cookies.get("session")?.value
-      if (token) {
-        try {
-          const { verifySessionToken } = await import("@/lib/auth")
-          const session = await verifySessionToken(token)
-          const { prisma } = await import("@/lib/db")
-          await prisma.resume.update({
-            where: { id: resumeId, userId: session.userId },
-            data: {
-              personalInfo: result.personalInfo ?? undefined,
-              skills: result.skills ?? undefined,
-              workExperience: result.workExperience ?? undefined,
-              education: result.education ?? undefined,
-              content: result.content ?? undefined,
-            },
-          })
-        } catch (err) {
-          console.warn("[ai/enhance-resume] Could not persist enhancement:", err)
-        }
+      try {
+        const { prisma } = await import("@/lib/db")
+        await prisma.resume.update({
+          where: { id: resumeId, userId: session.userId },
+          data: {
+            personalInfo: result.personalInfo ?? undefined,
+            skills: result.skills ?? undefined,
+            workExperience: result.workExperience ?? undefined,
+            education: result.education ?? undefined,
+            content: result.content ?? undefined,
+          },
+        })
+      } catch (err) {
+        console.warn("[ai/enhance-resume] Could not persist enhancement:", err)
       }
     }
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
 import { DashboardStats } from "@/components/dashboard-stats"
 import { QuickActions } from "@/components/quick-actions"
 import { RecentDocuments } from "@/components/recent-documents"
@@ -42,7 +42,7 @@ export default function DashboardPage() {
             Welcome back!
           </h1>
           <p className="text-mobile text-gray-600">
-            Here's what's happening with your resumes and cover letters.
+            Here&apos;s what&apos;s happening with your resumes and cover letters.
           </p>
         </div>
 

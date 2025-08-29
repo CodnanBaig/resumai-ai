@@ -13,18 +13,20 @@ type Stats = {
 
 export function DashboardStats() {
   const [stats, setStats] = useState<Stats | null>(null)
-  const [error, setError] = useState<string | null>(null)
+
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
-        const res = await fetch("/api/dashboard/stats")
+        const res = await fetch("/api/dashboard/stats", {
+          credentials: 'include'
+        })
         if (!res.ok) throw new Error(`Failed: ${res.status}`)
         const data = await res.json()
         if (!cancelled) setStats(data.stats as Stats)
-      } catch (e: any) {
-        if (!cancelled) setError("Failed to load stats")
+      } catch {
+        // Silently handle error
       }
     }
     load()

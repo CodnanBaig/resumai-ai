@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { verifySessionToken } from "@/lib/auth"
+import { parseJsonField } from "@/lib/utils"
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +26,16 @@ export async function POST(request: NextRequest) {
       ? await prisma.resume.findFirst({ where: { id: resumeId, userId: session.userId } })
       : null
 
+    // Parse JSON fields from resume if it exists
+    const parsedResume = resume ? {
+      ...resume,
+      personalInfo: parseJsonField(resume.personalInfo),
+      skills: parseJsonField(resume.skills),
+      workExperience: parseJsonField(resume.workExperience),
+      education: parseJsonField(resume.education),
+      content: parseJsonField(resume.content),
+    } : null
+
     const prompt = `Write a professional cover letter for the following job application:
 
 Company: ${companyName}
@@ -33,10 +44,10 @@ Job Description: ${jobDescription}
 
 Applicant Resume Summary:
 Name: ${session.email}
-Summary: ${(resume?.personalInfo as any)?.summary ?? ""}
-Skills: ${Array.isArray(resume?.skills) ? (resume.skills as string[]).join(", ") : ""}
-Recent Experience: ${(resume?.workExperience as any)?.[0]?.position ?? ""} at ${(resume?.workExperience as any)?.[0]?.company ?? ""}
-Education: ${(resume?.education as any)?.[0]?.degree ?? ""} in ${(resume?.education as any)?.[0]?.field ?? ""}
+Summary: ${parsedResume?.personalInfo?.summary ?? ""}
+Skills: ${Array.isArray(parsedResume?.skills) ? parsedResume.skills.join(", ") : ""}
+Recent Experience: ${parsedResume?.workExperience?.[0]?.position ?? ""} at ${parsedResume?.workExperience?.[0]?.company ?? ""}
+Education: ${parsedResume?.education?.[0]?.degree ?? ""} in ${parsedResume?.education?.[0]?.field ?? ""}
 
 ${additionalInfo ? `Additional Information: ${additionalInfo}` : ""}
 

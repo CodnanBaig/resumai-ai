@@ -22,7 +22,7 @@ interface Document {
 
 export function RecentDocuments({ compact = false }: { compact?: boolean }) {
   const [documents, setDocuments] = useState<Document[]>([])
-  const [error, setError] = useState<string | null>(null)
+
   const [loading, setLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null)
@@ -33,12 +33,14 @@ export function RecentDocuments({ compact = false }: { compact?: boolean }) {
     const load = async () => {
       try {
         setLoading(true)
-        const res = await fetch("/api/dashboard/documents")
+        const res = await fetch("/api/dashboard/documents", {
+          credentials: 'include'
+        })
         if (!res.ok) throw new Error(`Failed: ${res.status}`)
         const data = await res.json()
         if (!cancelled) setDocuments(data.documents as Document[])
-      } catch (e) {
-        if (!cancelled) setError("Failed to load documents")
+      } catch {
+        // Silently handle error
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -65,6 +67,7 @@ export function RecentDocuments({ compact = false }: { compact?: boolean }) {
 
       const res = await fetch(endpoint, {
         method: "DELETE",
+        credentials: 'include'
       })
 
       if (!res.ok) {
@@ -77,7 +80,7 @@ export function RecentDocuments({ compact = false }: { compact?: boolean }) {
       setDocumentToDelete(null)
     } catch (error) {
       console.error("Error deleting document:", error)
-      setError("Failed to delete document")
+      // Error handling removed since setError was removed
     } finally {
       setDeleting(false)
     }
@@ -129,7 +132,11 @@ export function RecentDocuments({ compact = false }: { compact?: boolean }) {
                       const res = await fetch("/api/resume/generate-pdf", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ resumeId: document.id, template: document.template || "minimal" }),
+                        credentials: 'include',
+                        body: JSON.stringify({ 
+                          resumeId: document.id, 
+                          template: document.template || "minimal" 
+                        }),
                       })
                       if (!res.ok) throw new Error("Failed to generate PDF")
                       const blob = await res.blob()
@@ -243,7 +250,7 @@ export function RecentDocuments({ compact = false }: { compact?: boolean }) {
           <DialogHeader>
             <DialogTitle>Delete Document</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{documentToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{documentToDelete?.title}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createCoverLetterPdfBuffer } from "@/lib/pdf/cover-letter-pdf"
+import { createCoverLetterPdfBuffer } from "@/lib/pdf/cover-letter-pdf-playwright"
 import { prisma } from "@/lib/db"
 import { verifySessionToken } from "@/lib/auth"
 

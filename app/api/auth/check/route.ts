@@ -11,7 +11,7 @@ export async function GET() {
     }
     await verifySessionToken(session)
     return NextResponse.json({ authenticated: true }, { status: 200 })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ authenticated: false }, { status: 401 })
   }
 }

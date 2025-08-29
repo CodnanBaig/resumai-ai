@@ -9,17 +9,18 @@ interface PDFGeneratorProps {
   resumeData: any
   template?: string
   resumeId: string
+  accentColor?: string
 }
 
-export function PDFGenerator({ resumeData, template = "minimal", resumeId }: PDFGeneratorProps) {
+export function PDFGenerator({ resumeData, template = "minimal", resumeId, accentColor }: PDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const { toast } = useToast()
 
   const handleDownloadPDF = async () => {
-    if (!resumeData || !resumeData.personalInfo) {
+    if (!resumeId) {
       toast({
         title: "Error",
-        description: "No resume data available for PDF generation",
+        description: "Resume ID is required for PDF generation",
         variant: "destructive",
       })
       return
@@ -28,13 +29,15 @@ export function PDFGenerator({ resumeData, template = "minimal", resumeId }: PDF
     setIsGenerating(true)
 
     try {
+      // Always use resumeId to fetch fresh data from database
       const response = await fetch("/api/resume/generate-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
-          resumeData,
+          resumeId, // Always pass resumeId to ensure fresh data
           template,
-          resumeId,
+          accentColor,
         }),
       })
 
@@ -48,7 +51,7 @@ export function PDFGenerator({ resumeData, template = "minimal", resumeId }: PDF
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
-        a.download = `resume-${resumeId || 'download'}.pdf`
+        a.download = `resume-${resumeId}.pdf`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)

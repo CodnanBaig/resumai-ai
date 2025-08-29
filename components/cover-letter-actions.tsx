@@ -23,7 +23,7 @@ export function CoverLetterActions({ coverLetterId, content, companyName, jobTit
         title: "Copied",
         description: "Cover letter copied to clipboard",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to copy to clipboard",
@@ -39,6 +39,7 @@ export function CoverLetterActions({ coverLetterId, content, companyName, jobTit
       const response = await fetch("/api/cover-letter/generate-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
           coverLetterId,
           content,
@@ -70,7 +71,7 @@ export function CoverLetterActions({ coverLetterId, content, companyName, jobTit
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Something went wrong while generating PDF",

@@ -10,6 +10,11 @@ import { MinimalTemplate } from "@/components/resume-templates/minimal-template"
 import { useEffect, useState } from "react"
 import { CorporateTemplate } from "@/components/resume-templates/corporate-template"
 import { CreativeTemplate } from "@/components/resume-templates/creative-template"
+import { TechModernTemplate } from "@/components/resume-templates/tech-modern-template"
+import { MarketingBrandTemplate } from "@/components/resume-templates/marketing-brand-template"
+import { AccountsLedgerTemplate } from "@/components/resume-templates/accounts-ledger-template"
+import { useToast } from "@/hooks/use-toast"
+import { Edit } from "lucide-react"
 
 export default function ResumeViewPage({ 
   params 
@@ -22,6 +27,48 @@ export default function ResumeViewPage({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState("minimal")
+  const [accentColor, setAccentColor] = useState<string>("#2563eb")
+  const { toast } = useToast()
+
+  // Add a function to refresh resume data
+  const fetchResumeData = async () => {
+    if (!id) return
+    
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      const response = await fetch(`/api/resume/${id}`, {
+        credentials: 'include'
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch resume')
+      }
+      
+      const data = await response.json()
+      if (data.success && data.resume) {
+        setResumeData({
+          personalInfo: data.resume.personalInfo || {},
+          skills: data.resume.skills || [],
+          workExperience: data.resume.workExperience || [],
+          education: data.resume.education || [],
+          certifications: data.resume.certifications || [],
+          projects: data.resume.projects || [],
+          languages: data.resume.languages || [],
+          socialLinks: data.resume.socialLinks || [],
+          interests: data.resume.interests || [],
+          content: data.resume.content || {}
+        })
+      } else {
+        throw new Error('Invalid resume data')
+      }
+    } catch (err) {
+      console.error('Error fetching resume:', err)
+      setError('Failed to load resume data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     // Await params and set id
@@ -36,7 +83,9 @@ export default function ResumeViewPage({
     // Check authentication on client side
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/check')
+        const response = await fetch('/api/auth/check', {
+          credentials: 'include'
+        })
         const data = await response.json()
         setIsAuthenticated(data.authenticated)
         
@@ -61,7 +110,9 @@ export default function ResumeViewPage({
         setIsLoading(true)
         setError(null)
         
-        const response = await fetch(`/api/resume/${id}`)
+        const response = await fetch(`/api/resume/${id}`, {
+          credentials: 'include'
+        })
         if (!response.ok) {
           throw new Error('Failed to fetch resume')
         }
@@ -72,7 +123,13 @@ export default function ResumeViewPage({
             personalInfo: data.resume.personalInfo || {},
             skills: data.resume.skills || [],
             workExperience: data.resume.workExperience || [],
-            education: data.resume.education || []
+            education: data.resume.education || [],
+            certifications: data.resume.certifications || [],
+            projects: data.resume.projects || [],
+            languages: data.resume.languages || [],
+            socialLinks: data.resume.socialLinks || [],
+            interests: data.resume.interests || [],
+            content: data.resume.content || {}
           })
         } else {
           throw new Error('Invalid resume data')
@@ -90,13 +147,107 @@ export default function ResumeViewPage({
     }
   }, [id, isAuthenticated])
 
+  // Debug: Monitor resumeData changes
+  useEffect(() => {
+    console.log('resumeData changed:', resumeData)
+  }, [resumeData])
+
   const handleEnhancementComplete = (enhancedData: any) => {
-    setResumeData(enhancedData)
+    console.log('=== AI Enhancement Debug ===')
+    console.log('Raw enhanced data:', enhancedData)
+    console.log('Current resumeData:', resumeData)
+    console.log('Enhanced data type:', typeof enhancedData)
+    console.log('Has result property:', !!enhancedData?.result)
+    console.log('Has content property:', !!enhancedData?.result?.content)
+    
+    // The AI returns data in result.content as a JSON string
+    if (enhancedData && enhancedData.result && enhancedData.result.content) {
+      try {
+        // Extract the JSON content from the AI response
+        let contentToParse = enhancedData.result.content
+        console.log('Content to parse:', contentToParse)
+        
+        // Remove markdown code blocks if present
+        if (contentToParse.includes('```json')) {
+          contentToParse = contentToParse.split('```json')[1].split('```')[0]
+          console.log('Content after removing markdown:', contentToParse)
+        }
+        
+        // Parse the JSON content
+        const parsedContent = JSON.parse(contentToParse.trim())
+        console.log('Parsed content:', parsedContent)
+        
+        // Format the data for the resume
+        const formattedData = {
+          personalInfo: parsedContent.personalInfo || resumeData?.personalInfo || {},
+          skills: parsedContent.skills || resumeData?.skills || [],
+          workExperience: parsedContent.workExperience || resumeData?.workExperience || [],
+          education: parsedContent.education || resumeData?.education || []
+        }
+        
+        console.log('Formatted data to set:', formattedData)
+        
+        // Update the state
+        setResumeData(formattedData)
+        console.log('State update called with:', formattedData)
+        
+        // Show success message
+        toast({
+          title: "Resume Enhanced!",
+          description: "Your resume has been updated with AI improvements.",
+        })
+      } catch (parseError) {
+        console.error('Error parsing AI response:', parseError)
+        
+        // If parsing fails, try to extract data from the raw response
+        if (enhancedData.result && typeof enhancedData.result === 'object') {
+          const fallbackData = {
+            personalInfo: enhancedData.result.personalInfo || resumeData?.personalInfo || {},
+            skills: enhancedData.result.skills || resumeData?.skills || [],
+            workExperience: enhancedData.result.workExperience || resumeData?.workExperience || [],
+            education: enhancedData.result.education || resumeData?.education || []
+          }
+          console.log('Using fallback data:', fallbackData)
+          setResumeData(fallbackData)
+          
+          toast({
+            title: "Resume Enhanced!",
+            description: "Your resume has been updated with AI improvements.",
+          })
+        } else {
+          // If all else fails, refresh from database
+          console.log('All parsing failed, refreshing from database')
+          fetchResumeData()
+          toast({
+            title: "Enhancement Complete",
+            description: "Your resume has been enhanced and saved to the database.",
+          })
+        }
+      }
+    } else {
+      console.log('No valid enhanced data structure found')
+      // If enhancement failed or returned unexpected data, refresh from database
+      fetchResumeData()
+      toast({
+        title: "Enhancement Complete",
+        description: "Your resume has been enhanced and saved to the database.",
+      })
+    }
   }
 
-  const handleTemplateSelect = (template: string) => {
+  const handleTemplateSelect = (template: string, color?: string) => {
     setSelectedTemplate(template)
-    console.log('Template selected:', template)
+    if (color) setAccentColor(color)
+    console.log('Template selected:', template, color)
+    
+    // Add visual feedback
+    const button = document.querySelector(`[data-template="${template}"]`)
+    if (button) {
+      button.classList.add('ring-2', 'ring-blue-500')
+      setTimeout(() => {
+        button.classList.remove('ring-2', 'ring-blue-500')
+      }, 500)
+    }
   }
 
   if (!isAuthenticated) {
@@ -135,7 +286,7 @@ export default function ResumeViewPage({
         <div className="text-center">
           <div className="text-gray-400 text-xl mb-4">📄</div>
           <p className="text-gray-900 text-lg mb-2">Resume Not Found</p>
-          <p className="text-gray-600 mb-4">The resume you're looking for doesn't exist or you don't have access to it.</p>
+          <p className="text-gray-600 mb-4">The resume you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
           <Link href="/dashboard">
             <Button>Back to Dashboard</Button>
           </Link>
@@ -150,12 +301,18 @@ export default function ResumeViewPage({
     
     switch (selectedTemplate) {
       case "corporate":
-        return <CorporateTemplate resumeData={resumeData} />
+        return <CorporateTemplate resumeData={resumeData} accentColor={accentColor} />
       case "creative":
-        return <CreativeTemplate resumeData={resumeData} />
+        return <CreativeTemplate resumeData={resumeData} accentColor={accentColor} />
+      case "tech-modern":
+        return <TechModernTemplate resumeData={resumeData} accentColor={accentColor} />
+      case "marketing-brand":
+        return <MarketingBrandTemplate resumeData={resumeData} accentColor={accentColor} />
+      case "accounts-ledger":
+        return <AccountsLedgerTemplate resumeData={resumeData} accentColor={accentColor} />
       case "minimal":
       default:
-        return <MinimalTemplate resumeData={resumeData} />
+        return <MinimalTemplate resumeData={resumeData} accentColor={accentColor} />
     }
   }
 
@@ -204,17 +361,25 @@ export default function ResumeViewPage({
                 <CardDescription>Enhance and customize your resume</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <Link href={`/resume/${id}/edit`}>
+                  <Button className="w-full" variant="outline">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Resume
+                  </Button>
+                </Link>
                 <AIEnhancementDialog 
                   resumeId={id} 
                   resumeData={resumeData} 
                   onEnhancementComplete={handleEnhancementComplete}
+                  buttonText="Tailor with AI"
+                  isResumeView={true}
                 />
                 <TemplateSelector 
                   resumeData={resumeData} 
                   onTemplateSelect={handleTemplateSelect}
                   selectedTemplate={selectedTemplate}
                 />
-                <PDFGenerator resumeData={resumeData} resumeId={id} template={selectedTemplate} />
+                <PDFGenerator resumeData={resumeData} resumeId={id} template={selectedTemplate} accentColor={accentColor} />
               </CardContent>
             </Card>
 

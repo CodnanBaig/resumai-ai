@@ -5,13 +5,27 @@ import type React from "react"
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Upload, File, X } from "lucide-react"
+import { Upload, File, X, CheckCircle, AlertCircle, Eye } from "lucide-react"
+
+interface ParsedResumeData {
+  id: string
+  title: string
+  personalInfo: any
+  skills: string[]
+  workExperience: any[]
+  education: any[]
+}
 
 export function FileUpload() {
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+  const [parsedData, setParsedData] = useState<ParsedResumeData | null>(null)
+  const [parsingErrors, setParsingErrors] = useState<string[]>([])
+  const [showPreview, setShowPreview] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -64,6 +78,9 @@ export function FileUpload() {
     }
 
     setFile(selectedFile)
+    setParsedData(null)
+    setParsingErrors([])
+    setShowPreview(false)
   }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +92,9 @@ export function FileUpload() {
 
   const removeFile = () => {
     setFile(null)
+    setParsedData(null)
+    setParsingErrors([])
+    setShowPreview(false)
   }
 
   const handleUpload = async () => {
@@ -88,28 +108,172 @@ export function FileUpload() {
 
       const response = await fetch("/api/resume/upload", {
         method: "POST",
+        credentials: 'include',
         body: formData,
       })
 
+      const result = await response.json()
+
       if (response.ok) {
-        const result = await response.json()
+        setParsedData(result.data)
+        setParsingErrors(result.parsingErrors || [])
+        
         toast({
           title: "Success",
-          description: "Resume uploaded successfully",
+          description: result.message || "Resume uploaded and parsed successfully",
         })
-        router.push(`/resume/${result.id}`)
       } else {
-        throw new Error("Upload failed")
+        throw new Error(result.message || "Upload failed")
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to upload resume",
+        description: error instanceof Error ? error.message : "Failed to upload resume",
         variant: "destructive",
       })
     } finally {
       setIsUploading(false)
     }
+  }
+
+  const handleContinue = () => {
+    if (parsedData) {
+      router.push(`/resume/${parsedData.id}`)
+    }
+  }
+
+  const renderParsedData = () => {
+    if (!parsedData) return null
+
+    return (
+      <Card className="mt-4">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Parsed Resume Data</CardTitle>
+              <CardDescription>
+                Your resume has been analyzed and structured. Review the extracted information below.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              {showPreview ? "Hide" : "Preview"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Personal Info */}
+          {parsedData.personalInfo && Object.keys(parsedData.personalInfo).length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Personal Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {parsedData.personalInfo.fullName && (
+                  <div><span className="text-muted-foreground">Name:</span> {parsedData.personalInfo.fullName}</div>
+                )}
+                {parsedData.personalInfo.email && (
+                  <div><span className="text-muted-foreground">Email:</span> {parsedData.personalInfo.email}</div>
+                )}
+                {parsedData.personalInfo.phone && (
+                  <div><span className="text-muted-foreground">Phone:</span> {parsedData.personalInfo.phone}</div>
+                )}
+                {parsedData.personalInfo.location && (
+                  <div><span className="text-muted-foreground">Location:</span> {parsedData.personalInfo.location}</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Skills */}
+          {parsedData.skills && parsedData.skills.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Skills ({parsedData.skills.length})</h4>
+              <div className="flex flex-wrap gap-2">
+                {parsedData.skills.slice(0, 10).map((skill, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {skill}
+                  </Badge>
+                ))}
+                {parsedData.skills.length > 10 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{parsedData.skills.length - 10} more
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Work Experience */}
+          {parsedData.workExperience && parsedData.workExperience.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Work Experience ({parsedData.workExperience.length})</h4>
+              <div className="space-y-2">
+                {parsedData.workExperience.slice(0, 3).map((exp, index) => (
+                  <div key={index} className="text-sm border-l-2 border-primary/20 pl-3">
+                    <div className="font-medium">{exp.position}</div>
+                    <div className="text-muted-foreground">{exp.company}</div>
+                  </div>
+                ))}
+                {parsedData.workExperience.length > 3 && (
+                  <div className="text-sm text-muted-foreground">
+                    +{parsedData.workExperience.length - 3} more positions
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Education */}
+          {parsedData.education && parsedData.education.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Education ({parsedData.education.length})</h4>
+              <div className="space-y-2">
+                {parsedData.education.slice(0, 2).map((edu, index) => (
+                  <div key={index} className="text-sm border-l-2 border-primary/20 pl-3">
+                    <div className="font-medium">{edu.degree}</div>
+                    <div className="text-muted-foreground">{edu.school}</div>
+                  </div>
+                ))}
+                {parsedData.education.length > 2 && (
+                  <div className="text-sm text-muted-foreground">
+                    +{parsedData.education.length - 2} more entries
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Parsing Errors/Warnings */}
+          {parsingErrors.length > 0 && (
+            <div className="border-l-4 border-yellow-400 bg-yellow-50 p-3 rounded">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-yellow-600" />
+                <h4 className="font-medium text-yellow-800">Parsing Warnings</h4>
+              </div>
+              <ul className="text-sm text-yellow-700 space-y-1">
+                {parsingErrors.map((error, index) => (
+                  <li key={index}>• {error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button onClick={handleContinue} className="flex-1">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Continue to Resume
+            </Button>
+            <Button variant="outline" onClick={removeFile}>
+              Upload Different File
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -158,11 +322,14 @@ export function FileUpload() {
         </div>
       )}
 
-      {file && (
+      {file && !parsedData && (
         <Button onClick={handleUpload} disabled={isUploading} className="w-full">
-          {isUploading ? "Uploading..." : "Upload Resume"}
+          {isUploading ? "Uploading and Parsing..." : "Upload & Parse Resume"}
         </Button>
       )}
+
+      {/* Show parsed data after successful upload */}
+      {renderParsedData()}
     </div>
   )
 }

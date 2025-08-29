@@ -56,6 +56,7 @@ export function CoverLetterForm() {
       const response = await fetch("/api/cover-letter/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
           resumeId: selectedResume,
           companyName,
@@ -80,7 +81,7 @@ export function CoverLetterForm() {
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Something went wrong",

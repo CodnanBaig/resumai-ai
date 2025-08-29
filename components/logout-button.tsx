@@ -12,6 +12,7 @@ export function LogoutButton() {
     try {
       const response = await fetch("/api/auth/logout", {
         method: "POST",
+        credentials: 'include',
       })
 
       if (response.ok) {
@@ -21,7 +22,7 @@ export function LogoutButton() {
         })
         router.push("/")
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to logout",

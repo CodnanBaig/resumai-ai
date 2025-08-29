@@ -20,9 +20,11 @@ interface AIEnhancementDialogProps {
   resumeId: string
   resumeData?: any
   onEnhancementComplete?: (enhancedData: any) => void
+  buttonText?: string
+  isResumeView?: boolean
 }
 
-export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplete }: AIEnhancementDialogProps) {
+export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplete, buttonText = "Enhance with AI", isResumeView = false }: AIEnhancementDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [jobDescription, setJobDescription] = useState("")
   const [isEnhancing, setIsEnhancing] = useState(false)
@@ -46,6 +48,7 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
       const response = await fetch("/api/ai/enhance-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
           resumeData,
           jobDescription: type === "tailor" ? jobDescription : undefined,
@@ -62,7 +65,8 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
         })
 
         if (onEnhancementComplete) {
-          onEnhancementComplete(result.result)
+          console.log('AI Dialog: Calling onEnhancementComplete with:', result)
+          onEnhancementComplete(result)
         }
 
         setIsOpen(false)
@@ -73,7 +77,7 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Something went wrong during enhancement",
@@ -90,13 +94,18 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
       <DialogTrigger asChild>
         <Button className="w-full">
           <Sparkles className="w-4 h-4 mr-2" />
-          Enhance with AI
+          {buttonText}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>AI Resume Enhancement</DialogTitle>
-          <DialogDescription>Choose how you'd like to enhance your resume using AI</DialogDescription>
+          <DialogTitle>{isResumeView ? "Tailor Resume with AI" : "AI Resume Enhancement"}</DialogTitle>
+          <DialogDescription>
+            {isResumeView 
+              ? "Customize your resume for a specific job or analyze keywords" 
+              : "Choose how you'd like to enhance your resume using AI"
+            }
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -199,13 +208,7 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
             </Card>
           </div>
 
-          {/* API Key Notice */}
-          <div className="bg-muted/50 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground">
-              <strong>Note:</strong> AI enhancement requires an OpenRouter API key. Add OPENROUTER_API_KEY to your
-              environment variables to enable this feature.
-            </p>
-          </div>
+
         </div>
       </DialogContent>
     </Dialog>
