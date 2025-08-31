@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Sparkles, Target, Hash, Loader2 } from "lucide-react"
+import { KeywordSelection } from "@/components/keyword-selection"
 
 interface AIEnhancementDialogProps {
   resumeId: string
@@ -29,9 +30,11 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
   const [jobDescription, setJobDescription] = useState("")
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [enhancementType, setEnhancementType] = useState<string | null>(null)
+  const [keywordData, setKeywordData] = useState<{ keywords: string[], recommendations: string } | null>(null)
+  const [showKeywordSelection, setShowKeywordSelection] = useState(false)
   const { toast } = useToast()
 
-  const handleEnhancement = async (type: "improve" | "tailor" | "keywords") => {
+  const handleEnhancement = async (type: "tailor" | "keywords") => {
     if (type === "tailor" && !jobDescription.trim()) {
       toast({
         title: "Job Description Required",
@@ -59,17 +62,35 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
       const result = await response.json()
 
       if (response.ok) {
-        toast({
-          title: "Enhancement Complete",
-          description: `Your resume has been ${type === "improve" ? "improved" : type === "tailor" ? "tailored" : "analyzed"} successfully`,
-        })
+        if (type === "keywords") {
+          // Handle keyword analysis - show selection interface
+          const keywordResult = result.result
+          if (keywordResult.suggestedKeywords && keywordResult.recommendations) {
+            setKeywordData({
+              keywords: keywordResult.suggestedKeywords,
+              recommendations: keywordResult.recommendations
+            })
+            setShowKeywordSelection(true)
+          } else {
+            toast({
+              title: "Analysis Complete",
+              description: "Keywords have been analyzed but no suggestions were found.",
+            })
+          }
+        } else {
+          // Handle tailor - direct enhancement
+          toast({
+            title: "Enhancement Complete",
+            description: "Your resume has been tailored successfully",
+          })
 
-        if (onEnhancementComplete) {
-          console.log('AI Dialog: Calling onEnhancementComplete with:', result)
-          onEnhancementComplete(result)
+          if (onEnhancementComplete) {
+            console.log('AI Dialog: Calling onEnhancementComplete with:', result)
+            onEnhancementComplete(result)
+          }
+
+          setIsOpen(false)
         }
-
-        setIsOpen(false)
       } else {
         toast({
           title: "Enhancement Failed",
@@ -89,6 +110,22 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
     }
   }
 
+  const handleKeywordsIntegrated = (result: any) => {
+    setShowKeywordSelection(false)
+    setKeywordData(null)
+    
+    if (onEnhancementComplete) {
+      onEnhancementComplete(result)
+    }
+    
+    setIsOpen(false)
+  }
+
+  const handleCloseKeywordSelection = () => {
+    setShowKeywordSelection(false)
+    setKeywordData(null)
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -97,17 +134,34 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
           {buttonText}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isResumeView ? "Tailor Resume with AI" : "AI Resume Enhancement"}</DialogTitle>
+          <DialogTitle>
+            {showKeywordSelection 
+              ? "Select Keywords to Integrate" 
+              : (isResumeView ? "Tailor Resume with AI" : "AI Resume Enhancement")
+            }
+          </DialogTitle>
           <DialogDescription>
-            {isResumeView 
-              ? "Customize your resume for a specific job or analyze keywords" 
-              : "Choose how you'd like to enhance your resume using AI"
+            {showKeywordSelection
+              ? "Choose which keywords you'd like to add to your resume. They will be smartly integrated into relevant sections."
+              : (isResumeView 
+                ? "Customize your resume for a specific job or analyze keywords" 
+                : "Choose how you'd like to enhance your resume using AI")
             }
           </DialogDescription>
         </DialogHeader>
 
+        {showKeywordSelection && keywordData ? (
+          <KeywordSelection
+            keywords={keywordData.keywords}
+            recommendations={keywordData.recommendations}
+            resumeId={resumeId}
+            resumeData={resumeData}
+            onKeywordsIntegrated={handleKeywordsIntegrated}
+            onClose={handleCloseKeywordSelection}
+          />
+        ) : (
         <div className="space-y-4">
           {/* Job Description Input */}
           <div className="space-y-2">
@@ -122,35 +176,7 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
           </div>
 
           {/* Enhancement Options */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-sm">General Improvement</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <CardDescription className="text-xs mb-3">
-                  Enhance language, add action verbs, and improve overall impact
-                </CardDescription>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full bg-transparent"
-                  onClick={() => handleEnhancement("improve")}
-                  disabled={isEnhancing}
-                >
-                  {isEnhancing && enhancementType === "improve" ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3 h-3 mr-1" />
-                  )}
-                  Improve
-                </Button>
-              </CardContent>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
@@ -210,6 +236,7 @@ export function AIEnhancementDialog({ resumeId, resumeData, onEnhancementComplet
 
 
         </div>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -1,13 +1,13 @@
 export interface ResumeData {
-  personalInfo: {
-    fullName: string
-    email: string
-    phone: string
-    location: string
-    summary: string
+  personalInfo?: {
+    fullName?: string
+    email?: string
+    phone?: string
+    location?: string
+    summary?: string
   }
-  skills: string[]
-  workExperience: Array<{
+  skills?: string[]
+  workExperience?: Array<{
     company: string
     position: string
     startDate: string
@@ -15,7 +15,7 @@ export interface ResumeData {
     description: string
     current: boolean
   }>
-  education: Array<{
+  education?: Array<{
     school: string
     degree: string
     field: string
@@ -48,4 +48,5 @@ export interface ResumeData {
     username: string
   }>
   interests?: string[]
+  content?: Record<string, unknown> // For storing any additional content
 }

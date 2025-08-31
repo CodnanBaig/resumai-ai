@@ -12,7 +12,22 @@ export async function POST(request: NextRequest) {
     const { resumeData, jobDescription, enhancementType, resumeId, customPrompt } = await request.json()
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
-    const model = process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free"
+    
+    // Dynamic model selection based on enhancement type
+    const getOptimalModel = (type: string) => {
+      switch (type) {
+        case "keywords":
+          return "deepseek/deepseek-chat-v3.1:free" // Best for keyword analysis
+        case "tailor":
+          return "qwen/qwen-2.5-72b-instruct:free" // Best for content enhancement
+        default:
+          return process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free"
+      }
+    }
+    
+    const model = customPrompt 
+      ? process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free"
+      : getOptimalModel(enhancementType)
 
     if (!openRouterApiKey) {
       return NextResponse.json(
@@ -29,19 +44,6 @@ export async function POST(request: NextRequest) {
     } else {
       // Use predefined prompts for the dialog enhancement
       switch (enhancementType) {
-        case "improve":
-          prompt = `Please improve this resume content to make it more professional, concise, and impactful. Focus on:
-          1. Strengthening action verbs and quantifying achievements
-          2. Making content shorter and more snappy
-          3. Adding relevant industry keywords
-          4. Using bullet points for key highlights
-          5. Keeping descriptions brief and scannable
-
-          Resume Data: ${JSON.stringify(resumeData, null, 2)}
-
-          Return the enhanced resume in the same JSON format with shorter, bullet-point content.`
-          break
-
         case "tailor":
           prompt = `Please tailor this resume to match the following job description. Focus on:
           1. Highlighting relevant skills and experience
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
           
           Resume Data: ${JSON.stringify(resumeData, null, 2)}
 
-          Return the tailored resume in the same JSON format with shorter, bullet-point content.`
+          IMPORTANT: Return the complete resume in the exact same JSON structure, preserving ALL fields including certifications, projects, languages, socialLinks, and interests. Only enhance the content, do not remove any existing fields or sections.`
           break
 
         case "keywords":
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
           {
             role: "system",
             content:
-              "You are a professional resume writer and career coach. Generate ONLY clean, professional text without any markdown formatting, explanations, or commentary. Do not include bullet points (• or *), bold formatting (**text**), explanations, or meta-commentary. Provide clean text that can be directly copied into a resume field. Focus on concise, impactful sentences with strong action verbs and quantifiable achievements where possible.",
+              "You are a professional resume writer and career coach. When enhancing resumes, you must preserve the complete data structure including all optional fields like certifications, projects, languages, socialLinks, and interests. Generate ONLY clean, professional text without any markdown formatting, explanations, or commentary. Do not include bullet points (• or *), bold formatting (**text**), explanations, or meta-commentary. Provide clean text that can be directly copied into a resume field. Focus on concise, impactful sentences with strong action verbs and quantifiable achievements where possible.",
           },
           {
             role: "user",
@@ -122,20 +124,35 @@ export async function POST(request: NextRequest) {
       result = { content: enhancedContent }
     }
 
-    // Optionally persist enhancement into an existing resume
-    if (resumeId && (enhancementType === "improve" || enhancementType === "tailor") && result) {
+    // Optionally persist enhancement into an existing resume (but NOT for keywords analysis)
+    if (resumeId && (enhancementType === "tailor") && result) {
       try {
         const { prisma } = await import("@/lib/db")
-        await prisma.resume.update({
-          where: { id: resumeId, userId: session.userId },
-          data: {
-            personalInfo: result.personalInfo ?? undefined,
-            skills: result.skills ?? undefined,
-            workExperience: result.workExperience ?? undefined,
-            education: result.education ?? undefined,
-            content: result.content ?? undefined,
-          },
-        })
+        
+        // Create update data object, preserving all existing fields and only updating what's provided
+        const updateData: Record<string, unknown> = {}
+        
+        // Update core fields if they exist in the result
+        if (result.personalInfo) updateData.personalInfo = result.personalInfo
+        if (result.skills) updateData.skills = result.skills
+        if (result.workExperience) updateData.workExperience = result.workExperience
+        if (result.education) updateData.education = result.education
+        if (result.content) updateData.content = result.content
+        
+        // Preserve additional fields if they exist in the result
+        if (result.certifications) updateData.certifications = result.certifications
+        if (result.projects) updateData.projects = result.projects
+        if (result.languages) updateData.languages = result.languages
+        if (result.socialLinks) updateData.socialLinks = result.socialLinks
+        if (result.interests) updateData.interests = result.interests
+        
+        // Only update if we have data to update
+        if (Object.keys(updateData).length > 0) {
+          await prisma.resume.update({
+            where: { id: resumeId, userId: session.userId },
+            data: updateData,
+          })
+        }
       } catch (err) {
         console.warn("[ai/enhance-resume] Could not persist enhancement:", err)
       }

@@ -13,8 +13,10 @@ import { CreativeTemplate } from "@/components/resume-templates/creative-templat
 import { TechModernTemplate } from "@/components/resume-templates/tech-modern-template"
 import { MarketingBrandTemplate } from "@/components/resume-templates/marketing-brand-template"
 import { AccountsLedgerTemplate } from "@/components/resume-templates/accounts-ledger-template"
+import type { ResumeData } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Edit } from "lucide-react"
+import { KeywordHighlightOverlay } from "@/components/keyword-highlight-overlay"
 
 export default function ResumeViewPage({ 
   params 
@@ -23,14 +25,119 @@ export default function ResumeViewPage({
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [id, setId] = useState<string>("")
-  const [resumeData, setResumeData] = useState<any>(null)
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState("minimal")
   const [accentColor, setAccentColor] = useState<string>("#2563eb")
+  const [keywordPlacements, setKeywordPlacements] = useState<Array<{keyword: string, section: string, location: string, context: string}> | null>(null)
   const { toast } = useToast()
 
-  // Add a function to refresh resume data
+  // Function to highlight where keywords were added
+  const highlightKeywordPlacements = (placements: Array<{keyword: string, section: string, location: string, context: string}>) => {
+    // Group placements by keyword for better highlighting
+    const keywordGroups = placements.reduce((acc, placement) => {
+      if (!acc[placement.keyword]) acc[placement.keyword] = []
+      acc[placement.keyword].push(placement)
+      return acc
+    }, {} as Record<string, typeof placements>)
+
+    // Add highlighting styles
+    const style = document.createElement('style')
+    style.textContent = `
+      .keyword-highlight {
+        background: linear-gradient(120deg, #fef3c7 0%, #fef3c7 100%);
+        background-repeat: no-repeat;
+        background-size: 100% 0.2em;
+        background-position: 0 88%;
+        border-radius: 3px;
+        padding: 1px 3px;
+        margin: 0 1px;
+        transition: all 0.3s ease;
+        position: relative;
+      }
+      .keyword-highlight:hover {
+        background-color: #fef3c7;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .keyword-highlight::after {
+        content: attr(data-keyword);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1f2937;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        z-index: 1000;
+      }
+      .keyword-highlight:hover::after {
+        opacity: 1;
+      }
+    `
+    document.head.appendChild(style)
+
+    // Highlight each keyword in the resume content
+    Object.entries(keywordGroups).forEach(([keyword, keywordPlacements]) => {
+      const resume = document.querySelector('.resume-content')
+      if (resume) {
+        highlightKeywordInElement(resume, keyword, keywordPlacements)
+      }
+    })
+
+    // Show a toast with placement summary
+    setTimeout(() => {
+      toast({
+        title: "Keyword Placements Highlighted",
+        description: "Hover over highlighted text to see which keyword was added.",
+        duration: 3000,
+      })
+    }, 1500)
+  }
+
+  const highlightKeywordInElement = (element: Element, keyword: string, placements: Array<{keyword: string, section: string, location: string, context: string}>) => {
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    )
+
+    const textNodes: Text[] = []
+    let node
+    while (node = walker.nextNode()) {
+      textNodes.push(node as Text)
+    }
+
+    textNodes.forEach(textNode => {
+      const text = textNode.textContent || ''
+      const keywordIndex = text.toLowerCase().indexOf(keyword.toLowerCase())
+      
+      if (keywordIndex !== -1) {
+        const before = text.substring(0, keywordIndex)
+        const keywordText = text.substring(keywordIndex, keywordIndex + keyword.length)
+        const after = text.substring(keywordIndex + keyword.length)
+        
+        const highlightSpan = document.createElement('span')
+        highlightSpan.className = 'keyword-highlight'
+        highlightSpan.setAttribute('data-keyword', keyword)
+        highlightSpan.textContent = keywordText
+        
+        const fragment = document.createDocumentFragment()
+        if (before) fragment.appendChild(document.createTextNode(before))
+        fragment.appendChild(highlightSpan)
+        if (after) fragment.appendChild(document.createTextNode(after))
+        
+        textNode.parentNode?.replaceChild(fragment, textNode)
+      }
+    })
+  }
   const fetchResumeData = async () => {
     if (!id) return
     
@@ -101,47 +208,7 @@ export default function ResumeViewPage({
     checkAuth()
   }, [])
 
-  // Fetch actual resume data from database
   useEffect(() => {
-    const fetchResumeData = async () => {
-      if (!id) return
-      
-      try {
-        setIsLoading(true)
-        setError(null)
-        
-        const response = await fetch(`/api/resume/${id}`, {
-          credentials: 'include'
-        })
-        if (!response.ok) {
-          throw new Error('Failed to fetch resume')
-        }
-        
-        const data = await response.json()
-        if (data.success && data.resume) {
-          setResumeData({
-            personalInfo: data.resume.personalInfo || {},
-            skills: data.resume.skills || [],
-            workExperience: data.resume.workExperience || [],
-            education: data.resume.education || [],
-            certifications: data.resume.certifications || [],
-            projects: data.resume.projects || [],
-            languages: data.resume.languages || [],
-            socialLinks: data.resume.socialLinks || [],
-            interests: data.resume.interests || [],
-            content: data.resume.content || {}
-          })
-        } else {
-          throw new Error('Invalid resume data')
-        }
-      } catch (err) {
-        console.error('Error fetching resume:', err)
-        setError('Failed to load resume data')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     if (id && isAuthenticated) {
       fetchResumeData()
     }
@@ -152,86 +219,153 @@ export default function ResumeViewPage({
     console.log('resumeData changed:', resumeData)
   }, [resumeData])
 
-  const handleEnhancementComplete = (enhancedData: any) => {
+  const handleEnhancementComplete = (enhancedData: { 
+    enhancementType?: string; 
+    result?: Record<string, unknown>;
+    keywordPlacements?: Array<{keyword: string, section: string, location: string, context: string}>;
+    integrationSummary?: string;
+    integratedKeywords?: string[];
+  }) => {
     console.log('=== AI Enhancement Debug ===')
     console.log('Raw enhanced data:', enhancedData)
+    console.log('Enhancement type:', enhancedData?.enhancementType)
     console.log('Current resumeData:', resumeData)
     console.log('Enhanced data type:', typeof enhancedData)
     console.log('Has result property:', !!enhancedData?.result)
     console.log('Has content property:', !!enhancedData?.result?.content)
     
-    // The AI returns data in result.content as a JSON string
-    if (enhancedData && enhancedData.result && enhancedData.result.content) {
-      try {
-        // Extract the JSON content from the AI response
-        let contentToParse = enhancedData.result.content
-        console.log('Content to parse:', contentToParse)
+    // Handle keyword integration results
+    if (enhancedData?.enhancementType === 'keyword-integration') {
+      console.log('Keyword integration result:', enhancedData)
+      
+      if (enhancedData.result) {
+        // Update resume data with the integrated keywords
+        const enhancedResumeData = enhancedData.result as ResumeData
+        setResumeData(enhancedResumeData)
         
-        // Remove markdown code blocks if present
-        if (contentToParse.includes('```json')) {
-          contentToParse = contentToParse.split('```json')[1].split('```')[0]
-          console.log('Content after removing markdown:', contentToParse)
-        }
+        // Show success message with details
+        const keywordCount = enhancedData.integratedKeywords?.length || 0
+        const sectionCount = new Set(enhancedData.keywordPlacements?.map(p => p.section)).size || 0
         
-        // Parse the JSON content
-        const parsedContent = JSON.parse(contentToParse.trim())
-        console.log('Parsed content:', parsedContent)
-        
-        // Format the data for the resume
-        const formattedData = {
-          personalInfo: parsedContent.personalInfo || resumeData?.personalInfo || {},
-          skills: parsedContent.skills || resumeData?.skills || [],
-          workExperience: parsedContent.workExperience || resumeData?.workExperience || [],
-          education: parsedContent.education || resumeData?.education || []
-        }
-        
-        console.log('Formatted data to set:', formattedData)
-        
-        // Update the state
-        setResumeData(formattedData)
-        console.log('State update called with:', formattedData)
-        
-        // Show success message
         toast({
-          title: "Resume Enhanced!",
-          description: "Your resume has been updated with AI improvements.",
+          title: "Keywords Integrated Successfully!",
+          description: `${keywordCount} keywords added across ${sectionCount} sections. Check the highlighted areas.`,
+          duration: 5000,
         })
-      } catch (parseError) {
-        console.error('Error parsing AI response:', parseError)
         
-        // If parsing fails, try to extract data from the raw response
-        if (enhancedData.result && typeof enhancedData.result === 'object') {
-          const fallbackData = {
-            personalInfo: enhancedData.result.personalInfo || resumeData?.personalInfo || {},
-            skills: enhancedData.result.skills || resumeData?.skills || [],
-            workExperience: enhancedData.result.workExperience || resumeData?.workExperience || [],
-            education: enhancedData.result.education || resumeData?.education || []
-          }
-          console.log('Using fallback data:', fallbackData)
-          setResumeData(fallbackData)
+        // Store keyword placements for highlighting
+        if (enhancedData.keywordPlacements) {
+          setKeywordPlacements(enhancedData.keywordPlacements)
+          sessionStorage.setItem('keywordPlacements', JSON.stringify(enhancedData.keywordPlacements))
+          // Trigger highlighting after a brief delay
+          setTimeout(() => {
+            highlightKeywordPlacements(enhancedData.keywordPlacements!)
+          }, 1000)
+        }
+      }
+      return
+    }
+    
+    // Handle keywords analysis differently - just show the suggestions
+    if (enhancedData?.enhancementType === 'keywords') {
+      console.log('Keywords analysis result:', enhancedData.result)
+      toast({
+        title: "Keyword Analysis Complete",
+        description: "Review the suggested keywords to improve your resume.",
+      })
+      // TODO: Show keywords in a modal or side panel
+      return
+    }
+    
+    // Only process tailor enhancements that modify the resume
+    if (enhancedData?.enhancementType === 'tailor') {
+      // The AI returns data in result.content as a JSON string
+      if (enhancedData && enhancedData.result && enhancedData.result.content) {
+        try {
+          // Extract the JSON content from the AI response
+          let contentToParse = enhancedData.result.content as string
+          console.log('Content to parse:', contentToParse)
           
+          // Remove markdown code blocks if present
+          if (contentToParse.includes('```json')) {
+            contentToParse = contentToParse.split('```json')[1].split('```')[0]
+            console.log('Content after removing markdown:', contentToParse)
+          }
+          
+          // Parse the JSON content
+          const parsedContent = JSON.parse(contentToParse.trim())
+          console.log('Parsed content:', parsedContent)
+          
+          // Format the data for the resume, preserving ALL fields
+          const formattedData = {
+            personalInfo: parsedContent.personalInfo || resumeData?.personalInfo || {},
+            skills: parsedContent.skills || resumeData?.skills || [],
+            workExperience: parsedContent.workExperience || resumeData?.workExperience || [],
+            education: parsedContent.education || resumeData?.education || [],
+            // Preserve additional fields from both the AI response and current data
+            certifications: parsedContent.certifications || resumeData?.certifications || [],
+            projects: parsedContent.projects || resumeData?.projects || [],
+            languages: parsedContent.languages || resumeData?.languages || [],
+            socialLinks: parsedContent.socialLinks || resumeData?.socialLinks || [],
+            interests: parsedContent.interests || resumeData?.interests || [],
+            content: parsedContent.content || resumeData?.content || {}
+          }
+          
+          console.log('Formatted data to set:', formattedData)
+          
+          // Update the state
+          setResumeData(formattedData)
+          console.log('State update called with:', formattedData)
+          
+          // Show success message
           toast({
             title: "Resume Enhanced!",
             description: "Your resume has been updated with AI improvements.",
           })
-        } else {
-          // If all else fails, refresh from database
-          console.log('All parsing failed, refreshing from database')
-          fetchResumeData()
-          toast({
-            title: "Enhancement Complete",
-            description: "Your resume has been enhanced and saved to the database.",
-          })
+        } catch (parseError) {
+          console.error('Error parsing AI response:', parseError)
+          
+          // If parsing fails, try to extract data from the raw response
+          if (enhancedData.result && typeof enhancedData.result === 'object') {
+            const fallbackData: ResumeData = {
+              personalInfo: (enhancedData.result.personalInfo as ResumeData['personalInfo']) || resumeData?.personalInfo || {},
+              skills: (enhancedData.result.skills as string[]) || resumeData?.skills || [],
+              workExperience: (enhancedData.result.workExperience as ResumeData['workExperience']) || resumeData?.workExperience || [],
+              education: (enhancedData.result.education as ResumeData['education']) || resumeData?.education || [],
+              // Preserve additional fields
+              certifications: (enhancedData.result.certifications as ResumeData['certifications']) || resumeData?.certifications || [],
+              projects: (enhancedData.result.projects as ResumeData['projects']) || resumeData?.projects || [],
+              languages: (enhancedData.result.languages as ResumeData['languages']) || resumeData?.languages || [],
+              socialLinks: (enhancedData.result.socialLinks as ResumeData['socialLinks']) || resumeData?.socialLinks || [],
+              interests: (enhancedData.result.interests as string[]) || resumeData?.interests || [],
+              content: (enhancedData.result.content as Record<string, unknown>) || resumeData?.content || {}
+            }
+            console.log('Using fallback data:', fallbackData)
+            setResumeData(fallbackData)
+            
+            toast({
+              title: "Resume Enhanced!",
+              description: "Your resume has been updated with AI improvements.",
+            })
+          } else {
+            // If all else fails, refresh from database
+            console.log('All parsing failed, refreshing from database')
+            fetchResumeData()
+            toast({
+              title: "Enhancement Complete",
+              description: "Your resume has been enhanced and saved to the database.",
+            })
+          }
         }
+      } else {
+        console.log('No valid enhanced data structure found')
+        // If enhancement failed or returned unexpected data, refresh from database
+        fetchResumeData()
+        toast({
+          title: "Enhancement Complete",
+          description: "Your resume has been enhanced and saved to the database.",
+        })
       }
-    } else {
-      console.log('No valid enhanced data structure found')
-      // If enhancement failed or returned unexpected data, refresh from database
-      fetchResumeData()
-      toast({
-        title: "Enhancement Complete",
-        description: "Your resume has been enhanced and saved to the database.",
-      })
     }
   }
 
@@ -299,25 +433,48 @@ export default function ResumeViewPage({
   const renderSelectedTemplate = () => {
     if (!resumeData) return null
     
+    const templateProps = { resumeData, accentColor }
+    
+    let TemplateComponent
     switch (selectedTemplate) {
       case "corporate":
-        return <CorporateTemplate resumeData={resumeData} accentColor={accentColor} />
+        TemplateComponent = CorporateTemplate
+        break
       case "creative":
-        return <CreativeTemplate resumeData={resumeData} accentColor={accentColor} />
+        TemplateComponent = CreativeTemplate
+        break
       case "tech-modern":
-        return <TechModernTemplate resumeData={resumeData} accentColor={accentColor} />
+        TemplateComponent = TechModernTemplate
+        break
       case "marketing-brand":
-        return <MarketingBrandTemplate resumeData={resumeData} accentColor={accentColor} />
+        TemplateComponent = MarketingBrandTemplate
+        break
       case "accounts-ledger":
-        return <AccountsLedgerTemplate resumeData={resumeData} accentColor={accentColor} />
+        TemplateComponent = AccountsLedgerTemplate
+        break
       case "minimal":
       default:
-        return <MinimalTemplate resumeData={resumeData} accentColor={accentColor} />
+        TemplateComponent = MinimalTemplate
+        break
     }
+    
+    return (
+      <div className="resume-content">
+        <TemplateComponent {...templateProps} />
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Keyword Highlight Overlay */}
+      {keywordPlacements && (
+        <KeywordHighlightOverlay
+          placements={keywordPlacements}
+          onClose={() => setKeywordPlacements(null)}
+        />
+      )}
+
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
