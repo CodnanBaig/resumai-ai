@@ -13,7 +13,7 @@
     "prisma:studio": "prisma studio",
     "migrate-db": "node migrate-database.js",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+    "vercel-build": "prisma generate --no-engine && next build"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
