@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ResumeAI Deployment Script for Vercel
+# ResumeAI Deployment Script for Vercel with Neon PostgreSQL
 
-echo "🚀 ResumeAI Deployment Script"
-echo "================================"
+echo "🚀 ResumeAI Deployment Script (Neon PostgreSQL)"
+echo "================================================"
 
 # Check if Vercel CLI is installed
 if ! command -v vercel &> /dev/null; then
@@ -30,13 +30,17 @@ vercel --prod
 # Set environment variables
 echo "⚙️  Setting up environment variables..."
 
-echo "Please set these environment variables in your Vercel dashboard:"
+echo "🔑 Environment variables setup required:"
 echo ""
-echo "OPENROUTER_API_KEY=your-openrouter-api-key"
-echo "OPENROUTER_MODEL=google/gemma-3-27b-it:free"
-echo "JWT_SECRET=$JWT_SECRET"
-echo "DATABASE_URL=your-database-connection-string"
+echo "CRITICAL: Set these in your Vercel dashboard:"
+echo "1. DATABASE_URL=postgresql://neondb_owner:npg_PSa14LuoAiOb@ep-young-water-adnjsygu-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+echo "2. JWT_SECRET=$JWT_SECRET"
+echo "3. OPENROUTER_API_KEY=your-openrouter-api-key"
+echo "4. OPENROUTER_MODEL=google/gemma-3-27b-it:free"
+echo "5. NEXT_PUBLIC_SITE_URL=https://resumai-ai.vercel.app"
 echo ""
+echo "⚠️  IMPORTANT: The register API error is likely due to missing environment variables"
+echo "   in production. Please ensure all variables are set in Vercel dashboard."
 
 # Ask if user wants to set them via CLI
 read -p "Would you like to set environment variables via CLI? (y/n): " -n 1 -r

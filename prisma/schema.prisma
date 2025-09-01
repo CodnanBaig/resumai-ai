@@ -19,41 +19,50 @@ model User {
 
   resumes      Resume[]
   coverLetters CoverLetter[]
+
+  @@index([email])
 }
 
 model Resume {
   id           String    @id @default(cuid())
   userId       String
-  user         User      @relation(fields: [userId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title        String
   template     String?
-  personalInfo String?
-  skills       String?
-  workExperience String?
-  education    String?
-  certifications String?
-  projects     String?
-  languages    String?
-  socialLinks  String?
-  interests    String?
-  content      String?
+  personalInfo String?   @db.Text
+  skills       String?   @db.Text
+  workExperience String? @db.Text
+  education    String?   @db.Text
+  certifications String? @db.Text
+  projects     String?   @db.Text
+  languages    String?   @db.Text
+  socialLinks  String?   @db.Text
+  interests    String?   @db.Text
+  content      String?   @db.Text
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   coverLetters CoverLetter[]
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model CoverLetter {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   resumeId  String?
-  resume    Resume?  @relation(fields: [resumeId], references: [id])
+  resume    Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
   company   String?
   jobTitle  String?
-  content   String
+  content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([resumeId])
+  @@index([createdAt])
 }
 
 
