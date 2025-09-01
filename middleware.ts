@@ -13,6 +13,9 @@ const PUBLIC_PATHS = new Set([
 // Public API paths that don't require authentication
 const PUBLIC_API_PATHS = new Set([
   "/api/ai/models",
+  "/api/test-db",
+  "/api/debug-db",
+  "/api/debug-register",
 ])
 
 export function middleware(request: NextRequest) {
