@@ -105,8 +105,7 @@ export default function ResumeViewPage({
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
-      null,
-      false
+      null
     )
 
     const textNodes: Text[] = []
