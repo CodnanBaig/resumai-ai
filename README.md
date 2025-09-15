@@ -1,47 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ResumeAI
 
-## Getting Started
+> This project is a work in progress. Features and APIs may change.
 
-First, run the development server:
+A Next.js 15 application to build, enhance, and export resumes and cover letters. It features:
+
+- AI-powered resume enhancement and keyword integration via OpenRouter
+- Cover letter generation tailored to a job description
+- Modern editable resume templates with rich text editing
+- PDF generation for resumes and cover letters (pdf-lib and Playwright rendering)
+- Email/password auth with stateless JWT sessions
+- SQLite (dev) via Prisma; optional production schema for MySQL
+
+## Tech Stack
+
+- Next.js App Router, React 19, TypeScript
+- UI: TailwindCSS + Radix UI
+- Database: Prisma + SQLite (dev). Optional MySQL schema for production
+- Auth: JWT (via `jose` + `bcryptjs`)
+- AI: OpenRouter models (free defaults provided)
+- PDF: `pdf-lib` and Playwright-based renderers
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Install deps (pnpm)
+pnpm install
+
+# Setup database (dev - SQLite)
+pnpm prisma:generate
+pnpm prisma:migrate
+
+# Run dev server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open `http://localhost:3000`.
 
 ## Environment Variables
 
-Create a `.env.local` file with the following:
+Create `.env.local` at the repo root:
 
 ```bash
+# Required for auth
+JWT_SECRET=replace-with-a-strong-random-secret
+
+# OpenRouter (AI)
 OPENROUTER_API_KEY=your-openrouter-key
-# Default to Gemma 3 free; override if you prefer another model
+# Default model if unspecified by endpoints
 OPENROUTER_MODEL=google/gemma-3-27b-it:free
+
+# Public site URL used in OpenRouter headers and internal links
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Optional: Explicit base URL for internal parsing logic
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
+
+Notes:
+- `JWT_SECRET` is mandatory for auth; without it, login/register will fail.
+- AI routes gracefully fallback or return errors if `OPENROUTER_API_KEY` is missing.
+
+## Scripts
+
+```bash
+pnpm dev                # Start Next.js in dev
+pnpm build              # Generate Prisma client, build Next.js
+pnpm start              # Start production server (after build)
+pnpm lint               # Lint
+
+pnpm prisma:generate    # Generate Prisma client
+pnpm prisma:migrate     # Run dev migration (SQLite)
+pnpm prisma:deploy      # Deploy migrations (prod)
+pnpm prisma:studio      # Prisma Studio
+
+pnpm vercel-build       # Build for Vercel (no-engine generate + next build)
+```
+
+## Database
+
+- Dev uses SQLite at `prisma/dev.db` with schema in `prisma/schema.prisma`.
+- For production MySQL (e.g., PlanetScale), see `prisma/schema.production.prisma` and set `DATABASE_URL`.
+
+Models:
+- `User`: email, passwordHash; relations to `Resume` and `CoverLetter`
+- `Resume`: stores template and JSON-like string fields for sections
+- `CoverLetter`: linked optionally to a resume
+
+## Authentication
+
+- Email/password auth using `bcryptjs` for hashing and stateless JWT session cookies.
+- Session cookie `session` is httpOnly and secure in production.
+- Key helpers in `lib/auth.ts`.
+
+## AI Features
+
+- Endpoints under `app/api/ai/`:
+  - `enhance-resume`: content tailoring and keyword-focused improvements
+  - `integrate-keywords`: integrates selected keywords with placement tracking
+  - `models`: lists recommended OpenRouter models
+- Uses `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, and `NEXT_PUBLIC_SITE_URL` for headers.
+
+## PDF Generation
+
+- Resumes: `lib/pdf/resume-pdf-playwright.ts` and `lib/pdf/resume-pdf-lib.ts`
+- Cover letters: `lib/pdf/cover-letter-pdf-playwright.ts`
+- API routes: `app/api/resume/generate-pdf/route.ts`, `app/api/cover-letter/generate-pdf/route.ts`
+- Playwright is included in dependencies. If running in CI or a fresh environment, ensure Playwright browsers are installed (e.g., `npx playwright install --with-deps`).
+
+## Project Structure
+
+- `app/`: App Router pages and API routes
+- `components/`: UI components, editors, templates
+- `lib/`: auth, db, utils, PDF, parsing
+- `prisma/`: schema(s), migrations, and dev database
+
+## Development Tips
+
+- Package manager: pnpm (`packageManager` pinned in `package.json`).
+- After pulling schema changes or on fresh install, run `pnpm prisma:generate`.
+- If migrations are added, run `pnpm prisma:migrate` for dev.
+- AI routes require authentication; ensure you are logged in before calling AI actions in the UI.
+
+## Troubleshooting
+
+- Missing JWT secret: server throws "JWT_SECRET not set" → add `JWT_SECRET` to `.env.local`.
+- OpenRouter issues: missing key or non-200 responses will either error or fallback depending on route.
+- Playwright errors: install browsers (`npx playwright install`) and ensure necessary system deps.
+- Database errors: ensure `prisma/dev.db` exists or run `pnpm prisma:migrate`.
+
+## Deployment
+
+- Vercel: `pnpm vercel-build` used by Vercel build
+- Production DB: switch to MySQL using `prisma/schema.production.prisma` and set `DATABASE_URL` before `pnpm prisma:deploy`
+
+---
+
+MIT License. PRs welcome.
