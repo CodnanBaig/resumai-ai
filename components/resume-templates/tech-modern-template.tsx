@@ -1,4 +1,4 @@
-import { renderHtmlContent, convertToBulletPoints } from "@/lib/utils"
+import { renderHtmlContent, convertToBulletPoints, formatMonthYear } from "@/lib/utils"
 import { ResumeData } from "@/lib/types"
 
 interface TechModernTemplateProps {
@@ -161,7 +161,7 @@ export function TechModernTemplate({ resumeData, accentColor = "#2563eb" }: Tech
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }}></div>
                 <h3 className="text-sm font-semibold">{exp.position}</h3>
                 <span className="text-[11px] text-gray-600">@ {exp.company}</span>
-                <span className="ml-auto text-[11px] text-gray-500">{exp.startDate} - {exp.current ? "Present" : exp.endDate}</span>
+                <span className="ml-auto text-[11px] text-gray-500">{formatMonthYear(exp.startDate)} - {exp.current ? "Present" : formatMonthYear(exp.endDate)}</span>
               </div>
                               <div className="text-xs text-gray-600 leading-relaxed ml-4">
                   {convertToBulletPoints(exp.description).map((bullet, bulletIndex) => (

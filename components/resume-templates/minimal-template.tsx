@@ -1,4 +1,4 @@
-import { renderHtmlContent, convertToBulletPoints } from "@/lib/utils"
+import { renderHtmlContent, convertToBulletPoints, formatMonthYear } from "@/lib/utils"
 import { ResumeData } from "@/lib/types"
 
 interface MinimalTemplateProps {
@@ -35,13 +35,8 @@ export function MinimalTemplate({ resumeData, accentColor = "#2563eb" }: Minimal
       {personalInfo.summary && (
         <div className="mb-6">
           <h2 className="text-lg font-medium mb-3 text-black" style={{ color: accentColor }}>Professional Summary</h2>
-          <div className="text-gray-700 leading-relaxed">
-            {convertToBulletPoints(personalInfo.summary).map((bullet, bulletIndex) => (
-              <div key={bulletIndex} className="flex items-start mb-2">
-                <span className="text-gray-500 mr-2 mt-1">•</span>
-                <span>{bullet}</span>
-              </div>
-            ))}
+          <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+            {renderHtmlContent(personalInfo.summary)}
           </div>
         </div>
       )}
@@ -54,7 +49,7 @@ export function MinimalTemplate({ resumeData, accentColor = "#2563eb" }: Minimal
             <div className="flex justify-between items-start mb-1">
               <h3 className="font-medium text-black" style={{ color: accentColor }}>{renderHtmlContent(exp.position)}</h3>
               <span className="text-sm text-gray-600">
-                {renderHtmlContent(exp.startDate)} - {exp.current ? "Present" : renderHtmlContent(exp.endDate)}
+                {formatMonthYear(exp.startDate)} - {exp.current ? "Present" : formatMonthYear(exp.endDate)}
               </span>
             </div>
             <p className="text-gray-700 text-sm mb-2">{renderHtmlContent(exp.company)}</p>

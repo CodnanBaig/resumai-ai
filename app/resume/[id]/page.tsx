@@ -11,6 +11,9 @@ import { useEffect, useState } from "react"
 import { CorporateTemplate } from "@/components/resume-templates/corporate-template"
 import { CreativeTemplate } from "@/components/resume-templates/creative-template"
 import { TechModernTemplate } from "@/components/resume-templates/tech-modern-template"
+import { TechCompactTemplate } from "@/components/resume-templates/tech-compact-template"
+import { TechSidebarTemplate } from "@/components/resume-templates/tech-sidebar-template"
+import { TechTwoColumnTemplate } from "@/components/resume-templates/tech-two-column-template"
 import { MarketingBrandTemplate } from "@/components/resume-templates/marketing-brand-template"
 import { AccountsLedgerTemplate } from "@/components/resume-templates/accounts-ledger-template"
 import type { ResumeData } from "@/lib/types"
@@ -444,6 +447,15 @@ export default function ResumeViewPage({
         break
       case "tech-modern":
         TemplateComponent = TechModernTemplate
+        break
+      case "tech-compact":
+        TemplateComponent = TechCompactTemplate
+        break
+      case "tech-sidebar":
+        TemplateComponent = TechSidebarTemplate
+        break
+      case "tech-two-column":
+        TemplateComponent = TechTwoColumnTemplate
         break
       case "marketing-brand":
         TemplateComponent = MarketingBrandTemplate

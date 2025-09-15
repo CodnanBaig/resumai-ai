@@ -131,7 +131,9 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
                       <div class="job-company">${job.company || 'Company'}</div>
                     </div>
                     <div class="job-dates">
-                      ${job.startDate || ''} - ${job.current ? 'Present' : job.endDate || ''}
+                      ${(job.startDate ? new Date(/^\d{4}-\d{2}$/.test(job.startDate) ? job.startDate + '-01' : job.startDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : '')}
+                      -
+                      ${(job.current ? 'Present' : (job.endDate ? new Date(/^\d{4}-\d{2}$/.test(job.endDate) ? job.endDate + '-01' : job.endDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : ''))}
                     </div>
                   </div>
                   ${job.description ? `<div class="job-description">${job.description}</div>` : ''}
@@ -211,7 +213,13 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
             <div class="section">
               <div class="section-title">Social Links</div>
               <div class="skills-list">
-                ${resumeData.socialLinks.map(link => `<span class="skill-item">${link.platform}: ${link.username}</span>`).join('')}
+                ${resumeData.socialLinks.map(link => {
+                  const url = link.url || (link.username && /^https?:\/\//.test(link.username) ? link.username : null)
+                  const label = `${link.platform}: ${link.username}`
+                  return url 
+                    ? `<a class=\"skill-item\" href=\"${url}\" target=\"_blank\" rel=\"noopener noreferrer\">${label}</a>`
+                    : `<span class=\"skill-item\">${label}</span>`
+                }).join('')}
               </div>
             </div>
           ` : ''}
@@ -308,7 +316,12 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
                     <div class="job-dates">
                       ${job.startDate || ''} - ${job.current ? 'Present' : job.endDate || ''}
                     </div>
-                    ${job.description ? `<div class="job-description">${job.description}</div>` : ''}
+                    ${job.description ? `<ul class="job-description">${job.description
+                      .split(/\r?\n/)
+                      .map(line => line.trim())
+                      .filter(line => line.length > 0)
+                      .map(line => `<li>${line.replace(/^[-•*]\s*/, '')}</li>`)
+                      .join('')}</ul>` : ''}
                   </div>
                 `).join('')}
               </div>
@@ -351,7 +364,13 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
               <div class="section">
                 <div class="section-title">Social Links</div>
                 <div class="skills-list">
-                  ${resumeData.socialLinks.map(link => `<span class="skill-item">${link.platform}: ${link.username}</span>`).join('')}
+                  ${resumeData.socialLinks.map(link => {
+                    const url = link.url || (link.username && /^https?:\/\//.test(link.username) ? link.username : null)
+                    const label = `${link.platform}: ${link.username}`
+                    return url 
+                      ? `<a class=\"skill-item\" href=\"${url}\" target=\"_blank\" rel=\"noopener noreferrer\">${label}</a>`
+                      : `<span class=\"skill-item\">${label}</span>`
+                  }).join('')}
                 </div>
               </div>
             ` : ''}
@@ -500,6 +519,218 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
       `
       break
 
+    case 'tech-compact':
+      templateStyles = `
+        <style>
+          .name { color: ${accentColor}; }
+          .section-title { color: ${accentColor}; font-weight: 600; margin: 12px 0 6px; }
+          .tag { display: inline-block; padding: 2px 8px; border: 1px solid ${accentColor}55; border-radius: 4px; color: ${accentColor}; margin: 2px; font-size: 10px; }
+        </style>
+      `
+      templateHTML = `
+        <div class="page">
+          <div class="header">
+            <div class="name">${fullName}</div>
+            <div class="contact">${contactLine}</div>
+          </div>
+          <div style="padding: 20px;">
+            ${resumeData.personalInfo?.summary ? `
+              <div class="section">
+                <div class="section-title">Professional Summary</div>
+                <div class="summary">${String(resumeData.personalInfo.summary)
+                  .replace(/<br\s*\/?>/gi, '\n')
+                  .replace(/<\/p>/gi, '\n\n')
+                  .replace(/<p[^>]*>/gi, '')
+                  .replace(/<[^>]*>/g, '')
+                  .split(/\r?\n/).map(l => l.trim()).filter(Boolean).join('<br/>')}</div>
+              </div>
+            ` : ''}
+            ${resumeData.workExperience && resumeData.workExperience.length > 0 ? `
+              <div class="section">
+                <div class="section-title">Experience</div>
+                ${resumeData.workExperience.map(job => `
+                  <div class="job">
+                    <div class="job-title">${job.position || 'Position'}</div>
+                    <div class="job-company">${job.company || 'Company'}</div>
+                    <div class="job-dates">
+                      ${(job.startDate ? new Date(/^\d{4}-\d{2}$/.test(job.startDate) ? job.startDate + '-01' : job.startDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : '')}
+                      -
+                      ${(job.current ? 'Present' : (job.endDate ? new Date(/^\d{4}-\d{2}$/.test(job.endDate) ? job.endDate + '-01' : job.endDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : ''))}
+                    </div>
+                    ${job.description ? `<ul class="job-description">${String(job.description).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => `<li>${l.replace(/^[-•*]\s*/, '')}</li>`).join('')}</ul>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${resumeData.projects && resumeData.projects.length > 0 ? `
+              <div class="section">
+                <div class="section-title">Projects</div>
+                ${resumeData.projects.map(p => `
+                  <div class="job">
+                    <div class="job-title">${p.name || 'Project'}</div>
+                    ${p.description ? `<ul class="job-description">${String(p.description).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => `<li>${l.replace(/^[-•*]\s*/, '')}</li>`).join('')}</ul>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${resumeData.skills && resumeData.skills.length > 0 ? `
+              <div class="section">
+                <div class="section-title">Tech Stack</div>
+                ${resumeData.skills.map((s: string) => `<span class="tag">${s}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `
+      break
+
+    case 'tech-sidebar':
+      templateStyles = `
+        <style>
+          .page { display: flex; }
+          .sidebar { width: 32%; background: #f8fafc; padding: 20px; }
+          .main-content { width: 68%; padding: 20px; }
+          .name { color: ${accentColor}; }
+          .section-title { color: ${accentColor}; }
+          .tag { display: inline-block; padding: 2px 8px; border: 1px solid ${accentColor}55; border-radius: 4px; color: ${accentColor}; margin: 2px; font-size: 10px; }
+        </style>
+      `
+      templateHTML = `
+        <div class="page">
+          <div class="sidebar">
+            <div class="header">
+              <div class="name">${fullName}</div>
+              <div class="contact">${resumeData.personalInfo?.email || ''}</div>
+              <div class="contact">${resumeData.personalInfo?.phone || ''}</div>
+              <div class="contact">${resumeData.personalInfo?.location || ''}</div>
+            </div>
+            ${resumeData.skills && resumeData.skills.length > 0 ? `
+              <div class="section">
+                <div class="section-title">Tech Stack</div>
+                ${resumeData.skills.map((s: string) => `<span class="tag">${s}</span>`).join('')}
+              </div>
+            ` : ''}
+            ${resumeData.projects && resumeData.projects.length > 0 ? `
+              <div class="section">
+                <div class="section-title">Projects</div>
+                <div class="skills-list">
+                  ${resumeData.projects.map((p: any) => `<div class="skill-item">${p.name || 'Project'}</div>`).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+          <div class="main-content">
+            ${resumeData.personalInfo?.summary ? `
+              <div class="section">
+                <div class="section-title">Professional Summary</div>
+                <div class="summary">${String(resumeData.personalInfo.summary)
+                  .replace(/<br\s*\/?>/gi, '\n')
+                  .replace(/<\/p>/gi, '\n\n')
+                  .replace(/<p[^>]*>/gi, '')
+                  .replace(/<[^>]*>/g, '')
+                  .split(/\r?\n/).map(l => l.trim()).filter(Boolean).join('<br/>')}</div>
+              </div>
+            ` : ''}
+            ${resumeData.workExperience && resumeData.workExperience.length > 0 ? `
+              <div class="section">
+                <div class="section-title">Experience</div>
+                ${resumeData.workExperience.map(job => `
+                  <div class="job">
+                    <div class="job-header">
+                      <div>
+                        <div class="job-title">${job.position || 'Position'}</div>
+                        <div class="job-company">${job.company || 'Company'}</div>
+                      </div>
+                      <div class="job-dates">
+                        ${(job.startDate ? new Date(/^\d{4}-\d{2}$/.test(job.startDate) ? job.startDate + '-01' : job.startDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : '')}
+                        -
+                        ${(job.current ? 'Present' : (job.endDate ? new Date(/^\d{4}-\d{2}$/.test(job.endDate) ? job.endDate + '-01' : job.endDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : ''))}
+                      </div>
+                    </div>
+                    ${job.description ? `<ul class="job-description">${String(job.description).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => `<li>${l.replace(/^[-•*]\s*/, '')}</li>`).join('')}</ul>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `
+      break
+
+    case 'tech-two-column':
+      templateStyles = `
+        <style>
+          .grid { display: grid; grid-template-columns: 2fr 3fr; gap: 20px; }
+          .name { color: ${accentColor}; }
+          .section-title { color: ${accentColor}; font-weight: 600; margin: 12px 0 6px; }
+          .tag { display: inline-block; padding: 2px 8px; border: 1px solid ${accentColor}55; border-radius: 4px; color: ${accentColor}; margin: 2px; font-size: 10px; }
+        </style>
+      `
+      templateHTML = `
+        <div class="page">
+          <div class="header">
+            <div class="name">${fullName}</div>
+            <div class="contact">${contactLine}</div>
+          </div>
+          <div class="grid" style="padding: 20px;">
+            <aside>
+              ${resumeData.skills && resumeData.skills.length > 0 ? `
+                <div class="section">
+                  <div class="section-title">Tech Stack</div>
+                  ${resumeData.skills.map((s: string) => `<span class="tag">${s}</span>`).join('')}
+                </div>
+              ` : ''}
+              ${resumeData.projects && resumeData.projects.length > 0 ? `
+                <div class="section">
+                  <div class="section-title">Projects</div>
+                  ${resumeData.projects.map((p: any) => `
+                    <div class="job">
+                      <div class="job-title">${p.name || 'Project'}</div>
+                      ${p.description ? `<ul class="job-description">${String(p.description).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => `<li>${l.replace(/^[-•*]\s*/, '')}</li>`).join('')}</ul>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </aside>
+            <main>
+              ${resumeData.personalInfo?.summary ? `
+                <div class="section">
+                  <div class="section-title">Professional Summary</div>
+                  <div class="summary">${String(resumeData.personalInfo.summary)
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<\/p>/gi, '\n\n')
+                    .replace(/<p[^>]*>/gi, '')
+                    .replace(/<[^>]*>/g, '')
+                    .split(/\r?\n/).map(l => l.trim()).filter(Boolean).join('<br/>')}</div>
+                </div>
+              ` : ''}
+              ${resumeData.workExperience && resumeData.workExperience.length > 0 ? `
+                <div class="section">
+                  <div class="section-title">Experience</div>
+                  ${resumeData.workExperience.map(job => `
+                    <div class="job">
+                      <div class="job-header">
+                        <div>
+                          <div class="job-title">${job.position || 'Position'}</div>
+                          <div class="job-company">${job.company || 'Company'}</div>
+                        </div>
+                        <div class="job-dates">
+                          ${(job.startDate ? new Date(/^\d{4}-\d{2}$/.test(job.startDate) ? job.startDate + '-01' : job.startDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : '')}
+                          -
+                          ${(job.current ? 'Present' : (job.endDate ? new Date(/^\d{4}-\d{2}$/.test(job.endDate) ? job.endDate + '-01' : job.endDate).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : ''))}
+                        </div>
+                      </div>
+                      ${job.description ? `<ul class="job-description">${String(job.description).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => `<li>${l.replace(/^[-•*]\s*/, '')}</li>`).join('')}</ul>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </main>
+          </div>
+        </div>
+      `
+      break
+
     case 'marketing-brand':
       templateStyles = `
         <style>
@@ -623,7 +854,13 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
               <div class="section">
                 <div class="section-title">Social Links</div>
                 <div class="skills-list">
-                  ${resumeData.socialLinks.map(link => `<span class="metric-badge">${link.platform}: ${link.username}</span>`).join('')}
+                  ${resumeData.socialLinks.map(link => {
+                    const url = link.url || (link.username && /^https?:\/\//.test(link.username) ? link.username : null)
+                    const label = `${link.platform}: ${link.username}`
+                    return url 
+                      ? `<a class=\"metric-badge\" href=\"${url}\" target=\"_blank\" rel=\"noopener noreferrer\">${label}</a>`
+                      : `<span class=\"metric-badge\">${label}</span>`
+                  }).join('')}
                 </div>
               </div>
             ` : ''}
@@ -663,7 +900,15 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
             ${resumeData.personalInfo?.summary ? `
               <div class="section">
                 <div class="section-title">Professional Summary</div>
-                <div class="summary">${resumeData.personalInfo.summary}</div>
+                <div class="summary">${String(resumeData.personalInfo.summary)
+                  .replace(/<br\s*\/?>/gi, '\n')
+                  .replace(/<\/p>/gi, '\n\n')
+                  .replace(/<p[^>]*>/gi, '')
+                  .replace(/<[^>]*>/g, '')
+                  .split(/\r?\n/)
+                  .map(line => line.trim())
+                  .filter(line => line.length > 0)
+                  .join('<br/>')}</div>
               </div>
             ` : ''}
             
@@ -890,7 +1135,13 @@ function generateHTML(resumeData: ResumeData, template: string | null = 'minimal
             <div class="section">
               <div class="section-title">Social Links</div>
               <div class="skills-list">
-                ${resumeData.socialLinks.map(link => `<div class="skill-item">${link.platform}: ${link.username}</div>`).join('')}
+                ${resumeData.socialLinks.map(link => {
+                  const url = link.url || (link.username && /^https?:\/\//.test(link.username) ? link.username : null)
+                  const label = `${link.platform}: ${link.username}`
+                  return url 
+                    ? `<a class=\"skill-item\" href=\"${url}\" target=\"_blank\" rel=\"noopener noreferrer\">${label}</a>`
+                    : `<div class=\"skill-item\">${label}</div>`
+                }).join('')}
               </div>
             </div>
           ` : ''}

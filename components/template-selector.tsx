@@ -57,6 +57,33 @@ export function TemplateSelector({ resumeData, onTemplateSelect, selectedTemplat
       category: "tech"
     },
     {
+      id: "tech-compact",
+      name: "Tech Compact",
+      description: "Compact single-column tech resume with dense impact bullets.",
+      icon: Code,
+      features: ["Space efficient", "Impact bullets", "ATS friendly"],
+      color: "bg-sky-50 border-sky-200",
+      category: "tech"
+    },
+    {
+      id: "tech-sidebar",
+      name: "Tech Sidebar",
+      description: "Two-pane layout with skills/projects in a sidebar.",
+      icon: Code,
+      features: ["Sidebar skills", "Clean hierarchy", "Scan friendly"],
+      color: "bg-cyan-50 border-cyan-200",
+      category: "tech"
+    },
+    {
+      id: "tech-two-column",
+      name: "Tech Two-Column",
+      description: "Balanced two-column layout for senior profiles.",
+      icon: Code,
+      features: ["Balanced columns", "Project emphasis", "Senior-ready"],
+      color: "bg-violet-50 border-violet-200",
+      category: "tech"
+    },
+    {
       id: "marketing-brand",
       name: "Digital Marketing",
       description: "Showcases campaigns, metrics, and brand storytelling.",

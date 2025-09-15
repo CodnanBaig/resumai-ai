@@ -76,7 +76,26 @@ export function convertToBulletPoints(content: string | null | undefined): strin
       .filter(line => line.length > 0)
       .map(line => line.replace(/^[\s]*[-•*]\s/, '').replace(/^\d+\.\s/, '').replace(/^\d+\)\s/, ''))
   }
-  
-  // If no bullet formatting, return the content as a single item (no bullet points)
+
+  // If there are multiple non-empty lines, treat each line as a bullet
+  const lines = cleanContent
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+
+  if (lines.length > 1) {
+    return lines
+  }
+
+  // Otherwise, return the content as a single item (no bullet points)
   return [cleanContent]
+}
+
+export function formatMonthYear(value: string | null | undefined): string {
+  if (!value) return ""
+  // Accept values like '2021-10' or full ISO dates
+  const iso = /^\d{4}-\d{2}$/.test(value) ? `${value}-01` : value
+  const date = new Date(iso)
+  if (isNaN(date.getTime())) return renderHtmlContent(value)
+  return date.toLocaleString('en-US', { month: 'short', year: 'numeric' })
 }

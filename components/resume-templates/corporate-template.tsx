@@ -1,4 +1,4 @@
-import { renderHtmlContent, convertToBulletPoints } from "@/lib/utils"
+import { renderHtmlContent, convertToBulletPoints, formatMonthYear } from "@/lib/utils"
 import { ResumeData } from "@/lib/types"
 
 interface CorporateTemplateProps {
@@ -37,13 +37,8 @@ export function CorporateTemplate({ resumeData, accentColor = "#111827" }: Corpo
             <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 pb-1" style={{ borderColor: accentColor }}>
               PROFESSIONAL SUMMARY
             </h2>
-            <div className="text-gray-700 leading-relaxed">
-              {convertToBulletPoints(personalInfo.summary).map((bullet, bulletIndex) => (
-                <div key={bulletIndex} className="flex items-start mb-2">
-                  <span className="text-gray-500 mr-2 mt-1">•</span>
-                  <span>{bullet}</span>
-                </div>
-              ))}
+            <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+              {renderHtmlContent(personalInfo.summary)}
             </div>
           </div>
         )}
@@ -61,7 +56,7 @@ export function CorporateTemplate({ resumeData, accentColor = "#111827" }: Corpo
                   <p className="text-gray-700 font-medium">{renderHtmlContent(exp.company)}</p>
                 </div>
                 <span className="text-sm text-gray-600 font-medium">
-                  {renderHtmlContent(exp.startDate)} - {exp.current ? "Present" : renderHtmlContent(exp.endDate)}
+                  {formatMonthYear(exp.startDate)} - {exp.current ? "Present" : formatMonthYear(exp.endDate)}
                 </span>
               </div>
               <div className="text-gray-600 leading-relaxed">

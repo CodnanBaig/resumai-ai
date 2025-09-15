@@ -35,13 +35,8 @@ export function AccountsLedgerTemplate({ resumeData, accentColor = "#059669" }: 
         {personalInfo.summary && (
           <section className="mb-6">
             <h2 className="text-base font-semibold mb-2" style={{ color: accentColor }}>Professional Summary</h2>
-            <div className="text-sm text-gray-700 leading-relaxed">
-              {convertToBulletPoints(personalInfo.summary).map((bullet, bulletIndex) => (
-                <div key={bulletIndex} className="flex items-start mb-1">
-                  <span className="text-gray-500 mr-2 mt-1">•</span>
-                  <span>{bullet}</span>
-                </div>
-              ))}
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+              {renderHtmlContent(personalInfo.summary)}
             </div>
           </section>
         )}

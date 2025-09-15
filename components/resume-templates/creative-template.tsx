@@ -1,4 +1,4 @@
-import { renderHtmlContent, convertToBulletPoints } from "@/lib/utils"
+import { renderHtmlContent, convertToBulletPoints, formatMonthYear } from "@/lib/utils"
 import { ResumeData } from "@/lib/types"
 
 interface CreativeTemplateProps {
@@ -125,7 +125,7 @@ export function CreativeTemplate({ resumeData, accentColor = "#7c3aed" }: Creati
                 <h3 className="font-bold" style={{ color: accentColor }}>{renderHtmlContent(exp.position)}</h3>
                 <p className="text-gray-700 font-medium text-sm">{renderHtmlContent(exp.company)}</p>
                 <p className="text-gray-500 text-xs">
-                  {renderHtmlContent(exp.startDate)} - {exp.current ? "Present" : renderHtmlContent(exp.endDate)}
+                  {formatMonthYear(exp.startDate)} - {exp.current ? "Present" : formatMonthYear(exp.endDate)}
                 </p>
               </div>
               <div className="text-gray-600 text-sm leading-relaxed">
