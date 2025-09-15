@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useId } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,14 +28,38 @@ export function CoverLetterForm() {
   const [isGenerating, setIsGenerating] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  
+  // Generate unique IDs for form elements
+  const resumeId = useId()
+  const companyNameId = useId()
+  const jobTitleId = useId()
+  const jobDescriptionId = useId()
+  const additionalInfoId = useId()
 
   useEffect(() => {
-    // TODO: Fetch user's resumes from API
-    // For now, using mock data
-    setResumes([
-      { id: "1", name: "Software Developer Resume", createdAt: "2024-01-15" },
-      { id: "2", name: "Senior Developer Resume", createdAt: "2024-01-10" },
-    ])
+    const fetchResumes = async () => {
+      try {
+        const response = await fetch("/api/resume", {
+          credentials: 'include',
+        })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.items) {
+            setResumes(data.items.map((item: { id: string; title: string; createdAt: string }) => ({
+              id: item.id,
+              name: item.title || "Untitled Resume",
+              createdAt: item.createdAt,
+            })))
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch resumes:", error)
+        // Fallback to empty array if fetch fails
+        setResumes([])
+      }
+    }
+    
+    fetchResumes()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,7 +120,7 @@ export function CoverLetterForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Resume Selection */}
       <div className="space-y-2">
-        <Label htmlFor="resume">Select Resume *</Label>
+        <Label htmlFor={resumeId}>Select Resume *</Label>
         <Select value={selectedResume} onValueChange={setSelectedResume}>
           <SelectTrigger>
             <SelectValue placeholder="Choose a resume to base your cover letter on" />
@@ -117,9 +141,9 @@ export function CoverLetterForm() {
       {/* Company and Job Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="companyName">Company Name *</Label>
+          <Label htmlFor={companyNameId}>Company Name *</Label>
           <Input
-            id="companyName"
+            id={companyNameId}
             placeholder="e.g., Google, Microsoft, Startup Inc."
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
@@ -127,9 +151,9 @@ export function CoverLetterForm() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="jobTitle">Job Title *</Label>
+          <Label htmlFor={jobTitleId}>Job Title *</Label>
           <Input
-            id="jobTitle"
+            id={jobTitleId}
             placeholder="e.g., Senior Software Engineer"
             value={jobTitle}
             onChange={(e) => setJobTitle(e.target.value)}
@@ -140,9 +164,9 @@ export function CoverLetterForm() {
 
       {/* Job Description */}
       <div className="space-y-2">
-        <Label htmlFor="jobDescription">Job Description *</Label>
+        <Label htmlFor={jobDescriptionId}>Job Description *</Label>
         <Textarea
-          id="jobDescription"
+          id={jobDescriptionId}
           placeholder="Paste the complete job posting here, including requirements, responsibilities, and company information..."
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
@@ -153,9 +177,9 @@ export function CoverLetterForm() {
 
       {/* Additional Information */}
       <div className="space-y-2">
-        <Label htmlFor="additionalInfo">Additional Information (Optional)</Label>
+        <Label htmlFor={additionalInfoId}>Additional Information (Optional)</Label>
         <Textarea
-          id="additionalInfo"
+          id={additionalInfoId}
           placeholder="Any specific points you'd like to highlight, company research, or personal connections..."
           value={additionalInfo}
           onChange={(e) => setAdditionalInfo(e.target.value)}

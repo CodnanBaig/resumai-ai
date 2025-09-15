@@ -4,6 +4,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CoverLetterActions } from "@/components/cover-letter-actions"
+import { prisma } from "@/lib/db"
+import { verifySessionToken } from "@/lib/auth"
 
 async function checkAuth() {
   const cookieStore = await cookies()
@@ -12,6 +14,8 @@ async function checkAuth() {
   if (!session) {
     redirect("/login")
   }
+  
+  return session.value
 }
 
 export default async function CoverLetterViewPage({ 
@@ -19,28 +23,37 @@ export default async function CoverLetterViewPage({
 }: { 
   params: Promise<{ id: string }> 
 }) {
-  await checkAuth()
+  const sessionToken = await checkAuth()
   const { id } = await params
 
-  // TODO: Fetch actual cover letter data from database
-  const mockCoverLetterData = {
-    id,
-    companyName: "Tech Innovations Inc.",
-    jobTitle: "Senior Software Engineer",
-    content: `Dear Hiring Manager,
+  // Verify session and fetch cover letter data
+  const session = await verifySessionToken(sessionToken)
+  const coverLetter = await prisma.coverLetter.findFirst({
+    where: { 
+      id, 
+      userId: session.userId 
+    },
+    include: {
+      resume: {
+        select: {
+          title: true
+        }
+      }
+    }
+  })
 
-I am writing to express my strong interest in the Senior Software Engineer position at Tech Innovations Inc. With over 5 years of experience in web development and a proven track record of leading successful projects, I am excited about the opportunity to contribute to your innovative team.
+  if (!coverLetter) {
+    redirect("/dashboard")
+  }
 
-In my current role as Senior Developer at Tech Corp, I have led the development of web applications using React and Node.js, directly aligning with the technical requirements outlined in your job posting. My expertise in JavaScript, Python, and SQL, combined with my Bachelor's degree in Computer Science from the University of Technology, positions me well to tackle the challenges and opportunities at Tech Innovations Inc.
-
-What particularly excites me about this opportunity is Tech Innovations Inc.'s commitment to cutting-edge technology solutions and collaborative work environment. I am eager to bring my technical skills, leadership experience, and passion for innovation to help drive your company's continued success.
-
-I would welcome the opportunity to discuss how my background and enthusiasm can contribute to your team. Thank you for considering my application, and I look forward to hearing from you soon.
-
-Sincerely,
-John Doe`,
-    createdAt: "2024-01-15",
-    resumeId: "1",
+  const coverLetterData = {
+    id: coverLetter.id,
+    companyName: coverLetter.company || "Company",
+    jobTitle: coverLetter.jobTitle || "Position",
+    content: coverLetter.content,
+    createdAt: coverLetter.createdAt.toLocaleDateString(),
+    resumeId: coverLetter.resumeId,
+    resumeTitle: coverLetter.resume?.title || "Resume"
   }
 
   return (
@@ -68,7 +81,7 @@ John Doe`,
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Cover Letter</h1>
           <p className="text-muted-foreground">
-            {mockCoverLetterData.jobTitle} at {mockCoverLetterData.companyName}
+            {coverLetterData.jobTitle} at {coverLetterData.companyName}
           </p>
         </div>
 
@@ -81,7 +94,7 @@ John Doe`,
               </CardHeader>
               <CardContent>
                 <div className="bg-white border rounded-lg p-8 font-serif leading-relaxed">
-                  <div className="whitespace-pre-line text-gray-900">{mockCoverLetterData.content}</div>
+                  <div className="whitespace-pre-line text-gray-900">{coverLetterData.content}</div>
                 </div>
               </CardContent>
             </Card>
@@ -95,9 +108,9 @@ John Doe`,
               <CardContent className="space-y-2">
                 <CoverLetterActions
                   coverLetterId={id}
-                  content={mockCoverLetterData.content}
-                  companyName={mockCoverLetterData.companyName}
-                  jobTitle={mockCoverLetterData.jobTitle}
+                  content={coverLetterData.content}
+                  companyName={coverLetterData.companyName}
+                  jobTitle={coverLetterData.jobTitle}
                 />
               </CardContent>
             </Card>
@@ -109,15 +122,19 @@ John Doe`,
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">Company</p>
-                  <p className="text-sm text-muted-foreground">{mockCoverLetterData.companyName}</p>
+                  <p className="text-sm text-muted-foreground">{coverLetterData.companyName}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Position</p>
-                  <p className="text-sm text-muted-foreground">{mockCoverLetterData.jobTitle}</p>
+                  <p className="text-sm text-muted-foreground">{coverLetterData.jobTitle}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Created</p>
-                  <p className="text-sm text-muted-foreground">{mockCoverLetterData.createdAt}</p>
+                  <p className="text-sm text-muted-foreground">{coverLetterData.createdAt}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Based on Resume</p>
+                  <p className="text-sm text-muted-foreground">{coverLetterData.resumeTitle}</p>
                 </div>
               </CardContent>
             </Card>

@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -30,16 +30,16 @@ model Resume {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title        String
   template     String?
-  personalInfo String?   @db.Text
-  skills       String?   @db.Text
-  workExperience String? @db.Text
-  education    String?   @db.Text
-  certifications String? @db.Text
-  projects     String?   @db.Text
-  languages    String?   @db.Text
-  socialLinks  String?   @db.Text
-  interests    String?   @db.Text
-  content      String?   @db.Text
+  personalInfo String?
+  skills       String?
+  workExperience String?
+  education    String?
+  certifications String?
+  projects     String?
+  languages    String?
+  socialLinks  String?
+  interests    String?
+  content      String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -57,7 +57,7 @@ model CoverLetter {
   resume    Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
   company   String?
   jobTitle  String?
-  content   String   @db.Text
+  content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

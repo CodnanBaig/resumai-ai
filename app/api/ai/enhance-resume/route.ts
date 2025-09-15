@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
           {
             role: "system",
             content:
-              "You are a professional resume writer and career coach. When enhancing resumes, you must preserve the complete data structure including all optional fields like certifications, projects, languages, socialLinks, and interests. Generate ONLY clean, professional text without any markdown formatting, explanations, or commentary. Do not include bullet points (• or *), bold formatting (**text**), explanations, or meta-commentary. Provide clean text that can be directly copied into a resume field. Focus on concise, impactful sentences with strong action verbs and quantifiable achievements where possible.",
+              "You are a professional resume writer and career coach. When enhancing resumes, you must preserve the complete data structure including all optional fields like certifications, projects, languages, socialLinks, and interests. For professional summaries, generate clean, professional text without any formatting. For work experience descriptions, format as HTML bullet points using <ul><li> tags for better readability. Do not include markdown formatting, explanations, or commentary. Focus on concise, impactful sentences with strong action verbs and quantifiable achievements where possible.",
           },
           {
             role: "user",

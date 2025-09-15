@@ -37,29 +37,37 @@ export async function POST(request: NextRequest) {
 
     let parsedData: any = {}
     let parsingErrors: string[] = []
+    let extractedText = ''
 
     try {
       // Extract text from file
-      const text = await ResumeParser.extractTextFromFile(file)
+      extractedText = await ResumeParser.extractTextFromFile(file)
       
-      // Parse the resume text
-      const parser = new ResumeParser(text)
-      parsedData = parser.parse()
-      
-      // Validate parsed data
-      const validatedData = ParsedResumeSchema.parse(parsedData)
-      parsedData = validatedData
+      // Use AI-powered parsing for better extraction
+      parsedData = await ResumeParser.parseWithAI(extractedText, auth)
       
     } catch (error) {
       console.error("[resume/upload] Parsing error:", error)
       parsingErrors.push(error instanceof Error ? error.message : "Unknown parsing error")
       
-      // Continue with empty data if parsing fails
-      parsedData = {
-        personalInfo: {},
-        skills: [],
-        workExperience: [],
-        education: []
+      // Fallback to basic parsing if AI fails
+      try {
+        if (extractedText) {
+          const parser = new ResumeParser(extractedText)
+          parsedData = parser.parse()
+        }
+      } catch (fallbackError) {
+        console.error("[resume/upload] Fallback parsing also failed:", fallbackError)
+      }
+      
+      // Continue with empty data if all parsing fails
+      if (!parsedData || Object.keys(parsedData).length === 0) {
+        parsedData = {
+          personalInfo: {},
+          skills: [],
+          workExperience: [],
+          education: []
+        }
       }
     }
 

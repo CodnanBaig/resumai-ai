@@ -75,6 +75,13 @@ export function RichTextEditor({
     editable: isMounted,
   }, [isMounted])
 
+  // Update editor content when content prop changes
+  useEffect(() => {
+    if (editor && isMounted && content !== editor.getHTML()) {
+      editor.commands.setContent(content)
+    }
+  }, [content, editor, isMounted])
+
   const setLink = useCallback(() => {
     if (!editor) return
 

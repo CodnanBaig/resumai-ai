@@ -231,13 +231,13 @@ export function ResumeForm({ initialData, isEditMode = false, onSave }: ResumeFo
             1. Using strong action verbs
             2. Quantifying achievements with numbers and metrics
             3. Making it shorter and more scannable
-            4. Creating a professional, flowing description
+            4. Formatting as bullet points for easy reading
 
             Position: ${workExp.position}
             Company: ${workExp.company}
             Current Description: ${currentContent}
             
-            Return ONLY the enhanced description as clean, professional text without any formatting, bullet points, or explanations.`
+            Return ONLY the enhanced description formatted as HTML bullet points using <ul><li> tags. Each achievement should be a separate bullet point.`
           } else {
             prompt = `Please generate a compelling work experience description for this role:
             
@@ -245,7 +245,7 @@ export function ResumeForm({ initialData, isEditMode = false, onSave }: ResumeFo
             Company: ${workExp.company}
             Skills: ${skills.join(', ')}
             
-            Generate a professional description as clean, flowing text without any formatting, bullet points, or explanations.`
+            Generate a professional description formatted as HTML bullet points using <ul><li> tags. Each achievement should be a separate bullet point.`
           }
         }
       }
@@ -267,10 +267,21 @@ export function ResumeForm({ initialData, isEditMode = false, onSave }: ResumeFo
       })
 
       const result = await response.json()
+      
+      // Debug logging to understand the response structure
+      console.log('AI Enhancement Response:', { response: response.ok, result })
 
-      if (response.ok && result.result?.content) {
-        let enhancedContent = result.result.content
-        
+      let enhancedContent: string | null = null
+      
+      if (response.ok && result.result?.content && result.result.content.trim()) {
+        // Primary response structure: result.result.content
+        enhancedContent = result.result.content
+      } else if (response.ok && result.content && result.content.trim()) {
+        // Fallback for different response structure
+        enhancedContent = result.content
+      }
+      
+      if (enhancedContent) {
         // Remove markdown code blocks if present
         if (enhancedContent.includes('```')) {
           enhancedContent = enhancedContent.split('```')[1]?.split('```')[0] || enhancedContent
@@ -280,16 +291,19 @@ export function ResumeForm({ initialData, isEditMode = false, onSave }: ResumeFo
         enhancedContent = enhancedContent.trim()
         
         if (type === 'summary') {
-          setPersonalInfo(prev => ({ ...prev, summary: enhancedContent }))
+          // Convert plain text to HTML for RichTextEditor (summary)
+          const htmlContent = `<p>${enhancedContent}</p>`
+          setPersonalInfo(prev => ({ ...prev, summary: htmlContent }))
           toast({
             title: "Summary Enhanced!",
             description: "Your professional summary has been improved with AI.",
           })
         } else if (type === 'workExperience' && workExpId) {
+          // Work experience already comes as HTML bullet points from AI
           setWorkExperience(prev => 
             prev.map(exp => 
               exp.id === workExpId 
-                ? { ...exp, description: enhancedContent }
+                ? { ...exp, description: enhancedContent || '' }
                 : exp
             )
           )
@@ -299,12 +313,17 @@ export function ResumeForm({ initialData, isEditMode = false, onSave }: ResumeFo
           })
         }
       } else {
-        throw new Error(result.message || "Failed to enhance content")
+        console.error('AI Enhancement failed:', { response: response.ok, result })
+        const errorMsg = result.message || 
+          (response.ok ? "AI returned empty content" : "API request failed") ||
+          "Failed to enhance content"
+        throw new Error(errorMsg)
       }
-    } catch {
+    } catch (error) {
+      console.error('AI Enhancement error:', error)
       toast({
         title: "Enhancement Failed",
-        description: "Failed to enhance content. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to enhance content. Please try again.",
         variant: "destructive",
       })
     } finally {

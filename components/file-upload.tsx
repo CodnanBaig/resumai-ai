@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,11 +19,20 @@ interface ParsedResumeData {
   education: any[]
 }
 
+interface UploadResponse {
+  success: boolean
+  id: string
+  message: string
+  data: ParsedResumeData
+  parsingErrors?: string[]
+}
+
 export function FileUpload() {
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [parsedData, setParsedData] = useState<ParsedResumeData | null>(null)
+  const [resumeId, setResumeId] = useState<string | null>(null)
   const [parsingErrors, setParsingErrors] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
   const router = useRouter()
@@ -39,18 +48,7 @@ export function FileUpload() {
     }
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-
-    const files = e.dataTransfer.files
-    if (files && files[0]) {
-      handleFileSelect(files[0])
-    }
-  }, [])
-
-  const handleFileSelect = (selectedFile: File) => {
+  const handleFileSelect = useCallback((selectedFile: File) => {
     const allowedTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -79,12 +77,26 @@ export function FileUpload() {
 
     setFile(selectedFile)
     setParsedData(null)
+    setResumeId(null)
     setParsingErrors([])
     setShowPreview(false)
-  }
+  }, [toast])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+
+    const files = e.dataTransfer?.files
+    if (files && files[0]) {
+      handleFileSelect(files[0])
+    }
+  }, [handleFileSelect])
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
+    const files = e.currentTarget?.files
     if (files && files[0]) {
       handleFileSelect(files[0])
     }
@@ -93,6 +105,7 @@ export function FileUpload() {
   const removeFile = () => {
     setFile(null)
     setParsedData(null)
+    setResumeId(null)
     setParsingErrors([])
     setShowPreview(false)
   }
@@ -115,12 +128,14 @@ export function FileUpload() {
       const result = await response.json()
 
       if (response.ok) {
-        setParsedData(result.data)
-        setParsingErrors(result.parsingErrors || [])
+        const uploadResult = result as UploadResponse
+        setParsedData(uploadResult.data)
+        setResumeId(uploadResult.id)
+        setParsingErrors(uploadResult.parsingErrors || [])
         
         toast({
           title: "Success",
-          description: result.message || "Resume uploaded and parsed successfully",
+          description: uploadResult.message || "Resume uploaded and parsed successfully",
         })
       } else {
         throw new Error(result.message || "Upload failed")
@@ -137,8 +152,8 @@ export function FileUpload() {
   }
 
   const handleContinue = () => {
-    if (parsedData) {
-      router.push(`/resume/${parsedData.id}`)
+    if (resumeId) {
+      router.push(`/resume/${resumeId}`)
     }
   }
 
@@ -192,8 +207,8 @@ export function FileUpload() {
             <div>
               <h4 className="font-medium mb-2">Skills ({parsedData.skills.length})</h4>
               <div className="flex flex-wrap gap-2">
-                {parsedData.skills.slice(0, 10).map((skill, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
+                {parsedData.skills.slice(0, 10).map((skill) => (
+                  <Badge key={skill} variant="secondary" className="text-xs">
                     {skill}
                   </Badge>
                 ))}
@@ -212,7 +227,7 @@ export function FileUpload() {
               <h4 className="font-medium mb-2">Work Experience ({parsedData.workExperience.length})</h4>
               <div className="space-y-2">
                 {parsedData.workExperience.slice(0, 3).map((exp, index) => (
-                  <div key={index} className="text-sm border-l-2 border-primary/20 pl-3">
+                  <div key={`${exp.company}-${exp.position}-${index}`} className="text-sm border-l-2 border-primary/20 pl-3">
                     <div className="font-medium">{exp.position}</div>
                     <div className="text-muted-foreground">{exp.company}</div>
                   </div>
@@ -232,7 +247,7 @@ export function FileUpload() {
               <h4 className="font-medium mb-2">Education ({parsedData.education.length})</h4>
               <div className="space-y-2">
                 {parsedData.education.slice(0, 2).map((edu, index) => (
-                  <div key={index} className="text-sm border-l-2 border-primary/20 pl-3">
+                  <div key={`${edu.school}-${edu.degree}-${index}`} className="text-sm border-l-2 border-primary/20 pl-3">
                     <div className="font-medium">{edu.degree}</div>
                     <div className="text-muted-foreground">{edu.school}</div>
                   </div>
@@ -254,8 +269,8 @@ export function FileUpload() {
                 <h4 className="font-medium text-yellow-800">Parsing Warnings</h4>
               </div>
               <ul className="text-sm text-yellow-700 space-y-1">
-                {parsingErrors.map((error, index) => (
-                  <li key={index}>• {error}</li>
+                {parsingErrors.map((error) => (
+                  <li key={error}>• {error}</li>
                 ))}
               </ul>
             </div>
@@ -279,14 +294,16 @@ export function FileUpload() {
   return (
     <div className="space-y-4">
       {!file ? (
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+        <button
+          type="button"
+          className={`w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-medium mb-2">Upload your resume</h3>
@@ -296,15 +313,13 @@ export function FileUpload() {
             accept=".pdf,.docx,.doc,.txt"
             onChange={handleFileInput}
             className="hidden"
-            id="file-upload"
+            ref={fileInputRef}
           />
-          <label htmlFor="file-upload">
-            <Button variant="outline" className="cursor-pointer bg-transparent">
-              Choose File
-            </Button>
-          </label>
+          <div className="mt-2">
+            <span className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-sm">Choose File</span>
+          </div>
           <p className="text-xs text-muted-foreground mt-2">Supports PDF, DOCX, and TXT files up to 10MB</p>
-        </div>
+        </button>
       ) : (
         <div className="border rounded-lg p-4">
           <div className="flex items-center justify-between">

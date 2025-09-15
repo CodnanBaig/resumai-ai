@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Upload, Mail, Sparkles } from "lucide-react"
+import { FileText, Mail, Sparkles } from "lucide-react"
 
 export function QuickActions() {
   return (
@@ -17,23 +17,6 @@ export function QuickActions() {
         <CardContent className="pt-0">
           <Link href="/resume/new">
             <Button className="w-full">Create New</Button>
-          </Link>
-        </CardContent>
-      </Card>
-
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-primary" />
-            <CardTitle className="text-base">Upload Resume</CardTitle>
-          </div>
-          <CardDescription className="text-sm">Upload an existing resume to enhance with AI</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <Link href="/resume/upload">
-            <Button variant="outline" className="w-full bg-transparent">
-              Upload File
-            </Button>
           </Link>
         </CardContent>
       </Card>
